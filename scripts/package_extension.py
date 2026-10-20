@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproducible browser package: extension sources + installation guide only."""
+"""Reproducible browser package: extension sources, installation guide and license."""
 import hashlib
 import json
 from pathlib import Path
@@ -9,7 +9,7 @@ manifest=json.loads((ROOT/'extension/manifest.json').read_text())
 output=ROOT/'dist';output.mkdir(exist_ok=True)
 target=output/f'LocalCall-browser-{manifest["version"]}.zip'
 files=sorted(p for p in (ROOT/'extension').iterdir() if p.is_file() and p.suffix in {'.js','.html','.css','.json'})
-files.append(ROOT/'INSTALLAZIONE.md')
+files.extend([ROOT/'INSTALLAZIONE.md', ROOT/'LICENSE', ROOT/'THIRD_PARTY.md'])
 with zipfile.ZipFile(target,'w',compression=zipfile.ZIP_DEFLATED) as archive:
     for p in files:
         name='LocalCall/'+('LEGGIMI.md' if p.name=='INSTALLAZIONE.md' else p.name)

@@ -7,3 +7,5 @@ Keep audio processing local. Do not add remote inference, telemetry or participa
 Run the relevant Python tests for server or attribution changes and browser tests for extension or UI changes. Changes to page adapters need controlled DOM fixtures and a clearly described real-call validation when available. Do not describe synthetic fixtures as proof of live service compatibility.
 
 Document changes in behavior and remaining limitations. Keep model weights, generated packages and local review output out of commits. Check the staged diff before committing.
+
+Contributions to LocalCall source are provided under the project’s GPL-3.0-only license. Preserve applicable third-party notices.

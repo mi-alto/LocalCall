@@ -68,4 +68,4 @@ Recorded validation: 32 Python tests with real local inference; three browser te
 - `scripts/`: model setup, synthetic audio and ZIP packaging.
 - `tests/`: server, inference and browser tests.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and [THIRD_PARTY.md](THIRD_PARTY.md) for upstream components. A project license must be selected before public open-source release.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and [THIRD_PARTY.md](THIRD_PARTY.md) for upstream components. LocalCall source is licensed under the [GNU General Public License v3.0 only](LICENSE) (`GPL-3.0-only`). Third-party tools and model weights retain their own licenses.

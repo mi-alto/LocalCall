@@ -1,1 +1,12 @@
-{"name":"localcall","private":true,"type":"module","scripts":{"test":"node --test tests/*.test.js"},"devDependencies":{"@playwright/test":"1.58.2"}}
+{
+  "name": "localcall",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2"
+  },
+  "license": "GPL-3.0-only"
+}

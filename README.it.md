@@ -70,3 +70,7 @@ npm test
 ```
 
 Per i test di inferenza generare i campioni sintetici con `python3 scripts/make_test_audio.py`, poi eseguire `LOCALCALL_INFERENCE_TEST=1 python3 -m unittest discover -s tests -v`. Anche i test browser richiedono questi campioni; usano un microfono finto, non quello reale. `CHROMIUM_PATH` permette di scegliere un eseguibile Chromium già presente. I test browser avviano un server su una porta libera con dati e profilo temporanei. Il test completo della barra del browser è separato e richiede un gesto nativo: `LOCALCALL_NATIVE_ACTION=1 node --test tests/extension_flow.test.js`. Dettagli e limiti del collaudo in `TEST_REPORT.md`.
+
+## Licenza
+
+Il codice di LocalCall è distribuito sotto [GNU GPL versione 3](LICENSE), esclusivamente questa versione (`GPL-3.0-only`). Strumenti e modelli di terze parti mantengono le proprie licenze; vedi [THIRD_PARTY.md](THIRD_PARTY.md).
