@@ -1,0 +1,18 @@
+# Private runtime data and downloaded weights
+/data/
+/models/
+# Local development, recordings, diagnostics and generated packages
+/node_modules/
+/.test-output/
+/reviews/
+/dist/
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+/.claude/
+/.codex/

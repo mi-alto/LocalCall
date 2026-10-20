@@ -1,0 +1,9 @@
+const $=id=>document.getElementById(id);
+let lastError='';
+const labels={idle:'Pronto',starting:'Avvio…',recording:'Registrazione locale attiva',stopping:'Salvataggio…',saved:'Salvato. Trascrizione in corso sul Mac.',error:'Registrazione interrotta'};
+async function send(type){let tabId;if(type==='start'){const [tab]=await chrome.tabs.query({active:true,currentWindow:true});tabId=tab?.id;if(tab?.url){const origin=new URL(tab.url).origin+'/*';if(!await chrome.permissions.contains({origins:[origin]}))await chrome.permissions.request({origins:[origin]});}}return chrome.runtime.sendMessage({target:'worker',type,tabId});}
+async function refresh(){const s=await send('status');$('status').textContent=s.error||lastError||labels[s.status]||s.status;$('warning').textContent=[...(s.warnings||[]),...(s.observerStale?['Nomi non aggiornati: torna nella scheda della call.']:[])].join(' ');$('micState').textContent=s.status==='recording'&&s.microphone==='active'?'Microfono attivo: registra anche quando sei in muto nella call.':'';$('people').textContent=s.status==='recording'?(s.speakers?.length?'Sta parlando: '+s.speakers.join(', '):'Nessun parlante identificato dalla pagina. Se qualcuno sta parlando, i nomi potrebbero non essere disponibili.'):'';$('start').disabled=['starting','recording','stopping'].includes(s.status);$('stop').disabled=s.status!=='recording';}
+for(const type of ['start','stop']) $(type).onclick=async()=>{try{lastError='';$(type).disabled=true;const s=await send(type);if(s.error)throw Error(s.error);await refresh();}catch(e){lastError=e.message;$('status').textContent=e.message;$(type).disabled=false;}};
+$('settings').onclick=()=>chrome.runtime.openOptionsPage();
+$('open').onclick=async()=>{const {token}=await chrome.storage.local.get('token');chrome.tabs.create({url:'http://127.0.0.1:8765/#'+(token||'')});};
+refresh();setInterval(refresh,2000);
