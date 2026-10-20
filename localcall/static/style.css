@@ -19,3 +19,5 @@ aside>.tag{display:none}.brand{font-size:26px}.nav-link{font-size:12px}
 #detail{margin-top:22px}#detailDate{margin-bottom:12px}#participants{margin:8px 0;gap:6px}#participantSection h3{margin:10px 0 6px}
 .utterance{padding:13px 0;gap:12px}.intro{margin:30px 0 24px}header{line-height:1.4}
 @media(max-width:850px){aside{padding:16px;gap:12px}.history-filters{max-width:460px}}
+
+#detail>.actions{margin-bottom:20px}
