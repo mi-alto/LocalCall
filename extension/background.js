@@ -35,9 +35,9 @@ async function handle(m, sender) {
   if (m.type === 'recorder-state') {
     if(sender.url!==chrome.runtime.getURL('offscreen.html'))return;
     const s=m.state;const bad=s.status==='error'||s.observerStale||s.warnings?.length;
-    await chrome.action.setBadgeText({text:bad?'!':s.status==='recording'?'REC':''});
+    await chrome.action.setBadgeText({text:s.status==='recording'?'REC':bad?'!':''});
     await chrome.action.setBadgeBackgroundColor({color:bad?'#bd552f':'#277c57'});
-    await chrome.action.setTitle({title:s.error||s.warnings?.join(' ')||'LocalCall · '+s.status});
+    await chrome.action.setTitle({title:s.status==='recording'?'Registrazione in corso'+(bad?' · Avvisi: '+(s.warnings?.join(' ')||'Nomi non aggiornati'):''):s.error||s.warnings?.join(' ')||'LocalCall · '+s.status});
     return {ok:true};
   }
   if (m.type === 'status') {

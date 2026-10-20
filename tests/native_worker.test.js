@@ -20,3 +20,11 @@ test('unrelated websites and subframes cannot start the native service',async()=
   await assert.rejects(vm.runInContext("handle({target:'worker',type:'activate-service'},sender)",w.context));assert.equal(w.calls(),0);
  }
 });
+
+test('recording with warnings keeps the REC badge rather than an exclamation',async()=>{
+ const w=worker();let badge,title;
+ w.context.chrome.action={setBadgeText:async value=>{badge=value.text;},setBadgeBackgroundColor:async()=>{},setTitle:async value=>{title=value.title;}};
+ w.context.sender={url:'chrome-extension://'+'a'.repeat(32)+'/offscreen.html'};
+ await vm.runInContext("handle({target:'worker',type:'recorder-state',state:{status:'recording',warnings:['Microfono non disponibile']}},sender)",w.context);
+ assert.equal(badge,'REC');assert.match(title,/Registrazione in corso/);assert.match(title,/Microfono/);
+});

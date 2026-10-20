@@ -1,3 +1,9 @@
+# Update 0.3.1 — recording status clarity
+
+Six targeted Node tests passed: popup recording/idle/offline states, active-service button disabling, separate microphone warnings, preserved REC badge, and native worker authorization. No recording was restarted or interrupted for this UI change. Reload the extension only after stopping and saving an active recording.
+
+---
+
 # Update 0.3.0 — browser-driven backend startup
 
 Validation after adding native messaging: **38 Python tests passed**, including real local inference, bounded native protocol messages, installer origin validation, detached backend startup and reuse of a real isolated server. **Five Node tests passed** (three Chrome browser regression tests and two worker authorization/token-isolation tests); the optional native toolbar capture test remained skipped in this run.
