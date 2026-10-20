@@ -1,5 +1,6 @@
 """Loopback-only local recorder. No outbound network calls at runtime."""
 import argparse
+from functools import lru_cache
 import fcntl
 import math
 import hashlib
@@ -59,6 +60,34 @@ def events_from(path):
             except (ValueError, AttributeError):
                 continue
     return result
+
+@lru_cache(maxsize=256)
+def stored_names(path, stamp, size, kind):
+    file = Path(path)
+    try:
+        rows = events_from(file) if kind == 'events' else read(file)
+        names = set()
+        for row in rows:
+            values = row.get('participants', []) + row.get('speakers', []) if kind == 'events' else [row.get('speaker', '')]
+            names.update(n.strip() for n in values if isinstance(n, str) and n.strip() and not n.startswith('Non identificato'))
+        return tuple(sorted(names))
+    except (OSError, ValueError, TypeError, AttributeError):
+        return ()
+
+def participant_names(folder, meta):
+    names = set(meta.get('participants', []))
+    for filename, kind in [('events.jsonl', 'events'), ('transcript.json', 'transcript')]:
+        if kind == 'events' and 'participants' in meta:
+            continue
+        path = folder/filename
+        try:
+            stat = path.stat()
+            names.update(stored_names(str(path), stat.st_mtime_ns, stat.st_size, kind))
+        except OSError:
+            pass
+    if 'mic' in meta.get('tracks', {}):
+        names.add(meta.get('self_name') or 'Io')
+    return sorted(names, key=str.casefold)
 
 def public_meta(meta):
     return {**meta, 'tracks': {name:{k:v for k,v in info.items() if k not in ('hashes','last_hash')}
@@ -278,7 +307,7 @@ class Handler(BaseHTTPRequestHandler):
                     try:
                         meta = read(p)
                         if isinstance(meta,dict) and 'created' in meta and 'status' in meta:
-                            sessions.append(public_meta(meta))
+                            sessions.append({**public_meta(meta), 'participants': participant_names(p.parent, meta)})
                     except (ValueError, KeyError, TypeError):
                         continue
                 return self.respond(200, sorted(sessions, key=lambda s:s['created'], reverse=True))
@@ -310,6 +339,7 @@ class Handler(BaseHTTPRequestHandler):
             if method == 'GET' and not action:
                 meta['transcript'] = read(folder/'transcript.json') if (folder/'transcript.json').exists() else []
                 meta['latest_event'] = meta.get('latest_event')
+                meta['participants'] = participant_names(folder, meta)
                 return self.respond(200, public_meta(meta))
             if method == 'DELETE' and not action:
                 if meta['status'] in ('recording', 'queued', 'transcribing'):
@@ -375,7 +405,9 @@ class Handler(BaseHTTPRequestHandler):
                         f.write(json.dumps(e, ensure_ascii=False)+'\n')
                 meta['event_count'] += len(valid)
                 meta['dropped_events'] = meta.get('dropped_events',0) + len(events)-len(valid)
-                if valid: meta['latest_event'] = valid[-1]
+                if valid:
+                    meta['latest_event'] = valid[-1]
+                    meta['participants'] = sorted(set(participant_names(folder, meta)).union(*(set(e['participants']+e['speakers']) for e in valid)))
             elif action in ('audio/remote', 'audio/mic'):
                 name = action.split('/')[1]
                 if name not in meta['tracks']:

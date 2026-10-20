@@ -87,3 +87,14 @@ class TimingTests(unittest.TestCase):
         from localcall.diarize import fuse
         result=fuse([{'text':' Ciao','offsets':{'from':950,'to':1050}}],[{'t':0,'speakers':['A']},{'t':1,'speakers':['B']}])
         self.assertEqual(result[0]['speaker'],'Non identificato')
+
+class ParticipantNamesTests(unittest.TestCase):
+    def test_collects_old_events_and_transcript_without_unknown_labels(self):
+        from localcall.server import participant_names
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            (folder/'events.jsonl').write_text(json.dumps({'t':0,'participants':['Anna'],'speakers':['Luca']})+'\n')
+            save(folder/'transcript.json',[{'speaker':'Luca'},{'speaker':'Non identificato'}])
+            self.assertEqual(participant_names(folder,{'tracks':{'mic':{}},'self_name':'Michele'}),['Anna','Luca','Michele'])
+            (folder/'events.jsonl').write_text(json.dumps({'t':1,'participants':['Sara'],'speakers':[]})+'\n')
+            self.assertIn('Sara',participant_names(folder,{}))

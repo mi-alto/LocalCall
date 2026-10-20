@@ -71,3 +71,7 @@ Recorded validation: 32 Python tests with real local inference; three browser te
 - `tests/`: server, inference and browser tests.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and [THIRD_PARTY.md](THIRD_PARTY.md) for upstream components. LocalCall source is licensed under the [GNU General Public License v3.0 only](LICENSE) (`GPL-3.0-only`). Third-party tools and model weights retain their own licenses.
+
+## History
+
+The sidebar searches meeting titles and detected participant names. Optional **Dal / Al** date filters use the recording start date in your local timezone and include both boundary days. The transcript page shows the detected participant list. Names not captured in old sessions cannot be recovered by this search. **Nuova registrazione / Impostazioni** opens the separate setup and microphone recording view.

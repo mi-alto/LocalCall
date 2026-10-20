@@ -57,6 +57,7 @@ test('UI: authenticate, record real WebM via fake mic, transcribe locally, expor
  page.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('blob:'))external.push(r.url());});
  await page.goto(base+'/#'+token);
  await page.locator('#engine').filter({hasText:'PRONTO'}).waitFor();
+ await page.locator('#setupLink').click();
  await page.locator('#title').fill('Test automatico — Italiano');
  await page.locator('#selfName').fill('Michele');
  await page.locator('#language').selectOption('it');
@@ -64,7 +65,7 @@ test('UI: authenticate, record real WebM via fake mic, transcribe locally, expor
  await page.locator('#recordBadge').filter({hasText:'REGISTRAZIONE'}).waitFor();
  await page.waitForTimeout(9500);
  await page.locator('#stop').click();
- await page.locator('#detailStatus').filter({hasText:'Pronta'}).waitFor({timeout:180000});
+ await page.locator('#detailStatus').filter({hasText:'Trascritta'}).waitFor({timeout:180000});
  const text=await page.locator('#transcript').innerText();
  assert.match(text,/Michele/);assert.match(text,/progetto/i);
  const download=page.waitForEvent('download');await page.locator('[data-export="txt"]').click();
@@ -142,19 +143,44 @@ test('History: clean meeting titles, visible time and equal-height cards',async(
  try{
   const page=await browser.newPage();
   const sessions=[
-   {id:'a',title:'(30) Registrazione di prova | Microsoft Teams',created:1792479600,status:'done'},
-   {id:'b',title:'(31) Partecipazione alla riunione | Riunione di progetto con un titolo molto lungo per verificare le due righe nella scheda | Microsoft Teams',created:1792476000,status:'done'},
+   {id:'a',title:'(30) Registrazione di prova | Microsoft Teams',created:1792479600,status:'done',participants:['Anna Rossi']},
+   {id:'b',title:'(31) Partecipazione alla riunione | Riunione di progetto con un titolo molto lungo per verificare le due righe nella scheda | Microsoft Teams',created:1792389600,status:'done',participants:['Luca Bianchi']},
    {id:'c',title:'Nota breve',created:1792472400,status:'done'}
   ];
   await page.route(base+'/api/sessions',route=>route.fulfill({json:sessions}));
+  await page.route(base+'/api/sessions/*',route=>{const id=route.request().url().split('/').pop();route.fulfill({json:{...sessions.find(s=>s.id===id),transcript:[]}});});
   await page.goto(base+'/#'+token);
   await page.waitForFunction(()=>document.querySelectorAll('.history-card').length===3);
-  assert.equal(await page.locator('#reload').innerText(),'History');
+  assert.equal(await page.locator('.history-filters h2').innerText(),'History');
   assert.equal(await page.locator('.history-title').first().innerText(),'Registrazione di prova');
   const heights=await page.locator('.history-card').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().height));
   assert.equal(new Set(heights).size,1);
   for(const text of await page.locator('.history-card time').allTextContents())assert.match(text,/\d{2}:\d{2}/);
+  await page.locator('#detail').waitFor({state:'visible'});
+  assert.equal(await page.locator('#pair').isVisible(),false);
+  assert.match(await page.locator('#participants').innerText(),/Anna Rossi/);
+  await page.locator('#search').fill('anna');
+  assert.equal(await page.locator('.history-card').count(),1);
+  await page.locator('#search').fill('riunione di progetto');
+  assert.equal(await page.locator('.history-card').count(),1);
+  await page.locator('#search').fill('');
+  await page.locator('#dateFrom').fill('2026-10-20');await page.locator('#dateTo').fill('2026-10-20');
+  assert.equal(await page.locator('.history-card').count(),2);
+  await page.locator('#search').fill('Luca');
+  assert.equal(await page.locator('.history-card').count(),0);
+  await page.locator('#clearFilters').click();
+  assert.equal(await page.locator('.history-card').count(),3);
+  await page.locator('#dateFrom').fill('2026-10-21');await page.locator('#dateTo').fill('2026-10-20');
+  assert.match(await page.locator('#filterStatus').innerText(),/deve precedere/);
+  await page.locator('#clearFilters').click();
   await page.screenshot({path:'.test-output/history.png',fullPage:true});
+  await page.locator('#setupLink').click();
+  assert.equal(await page.locator('#pair').isVisible(),true);
+  assert.equal(await page.locator('#detail').isVisible(),false);
+  await page.locator('.history-card').first().click();
+  await page.locator('#detail').waitFor({state:'visible'});
+  assert.equal(await page.locator('#detail').isVisible(),true);
+  assert.equal(await page.locator('#pair').isVisible(),false);
   await page.goto('about:blank');
   await page.addScriptTag({path:'extension/adapters.js'});
   for(const [title,expected] of [['(30) Registrazione di prova | Microsoft Teams','Registrazione di prova'],['(31) Partecipazione alla riunione | Sprint planning | Microsoft Teams','Sprint planning'],['Meet - Team sync','Team sync'],['Nota breve','Nota breve']]){

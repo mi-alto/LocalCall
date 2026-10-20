@@ -1,3 +1,11 @@
+# Update — separate setup view and searchable History
+
+Setup/microphone recording now has its own `?view=setup` view; transcription views use `?call=...`. History filters combine title/participant text with inclusive local-calendar start/end dates. Participant names are aggregated from stored observations and transcripts, including legacy sessions; absent names are not invented.
+
+Python suite: 39 tests run, 35 passed and four opt-in inference tests skipped. Browser regression checks for recording, inference and export passed. The History test passed after waiting for asynchronous detail loading; it covers title/participant searches, combined date filters, invalid intervals, reset, separate views, participant display and equal card height. The resulting screenshot was inspected. The inactive installed backend was restarted and participant fields verified without exposing recording contents.
+
+---
+
 # Update 0.3.5 — History and meeting titles
 
 A targeted browser test passed for uniform History card height, visible start date/time, and cleaned Teams/Meet titles. The rendered History screenshot was inspected. New extension recordings read document.title from the meeting tab after injecting the adapter, stripping known provider suffixes, notification counters and join-page prefixes. Existing session titles are cleaned for display only; saved metadata is preserved. Displayed clock time is the recording start time in the viewer's local timezone, not the scheduled meeting time.
