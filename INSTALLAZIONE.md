@@ -10,7 +10,7 @@ Se avevi la versione precedente in esecuzione, chiudila dal suo Terminale (Contr
 
 ## 2. Installa il plugin
 
-1. Estrai `LocalCall-browser-0.3.3.zip`. Otterrai la cartella **LocalCall**, contenente `manifest.json`.
+1. Estrai `LocalCall-browser-0.3.4.zip`. Otterrai la cartella **LocalCall**, contenente `manifest.json`.
 2. Apri `chrome://extensions` in Chrome oppure `brave://extensions` in Brave.
 3. Attiva **Modalità sviluppatore**.
 4. Premi **Carica estensione non pacchettizzata** e seleziona la cartella **LocalCall** estratta, non lo ZIP.

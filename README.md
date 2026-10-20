@@ -8,7 +8,7 @@ Local meeting recording and transcription for Apple Silicon Macs, with a Chrome/
 
 Experimental, version 0.3.0. Transcription runs **after recording stops**, not live. The interface currently uses Italian; transcription supports Italian, English and automatic language detection.
 
-The same extension targets Meet and Teams web in Chrome and Brave. Teams desktop, Safari and Firefox are not supported. Speaker names come from visible page elements and speaking indicators, not acoustic voice clustering. Real meeting layouts have **not yet been validated**; missing or ambiguous evidence is labeled “Non identificato” (unidentified).
+The same extension targets Meet and Teams web in Chrome and Brave. Teams desktop, Safari and Firefox are not supported. Speaker names come from visible page elements and speaking indicators, not acoustic voice clustering. One Teams web layout has been inspected live, including speech/silence transitions (see TEST_REPORT.md); full attribution accuracy and other layouts remain unverified. Missing or ambiguous evidence is labeled “Non identificato” (unidentified).
 
 ## Requirements and setup
 

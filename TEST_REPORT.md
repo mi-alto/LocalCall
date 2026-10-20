@@ -1,3 +1,13 @@
+# Update 0.3.4 — Teams live DOM adapter
+
+On 2026-10-20 the user's live Teams web test exposed remote tiles as `[data-cid="calling-participant-stream"]`, names under `[data-tid="participant-info-nametag"] [data-person-mri]`, and a `[data-tid="voice-level-stream-outline"]` with `data-is-speaking="true"` during speech and `"false"` during a user-confirmed silent interval. The self tile is `[data-tid="myself-video"]`.
+
+The adapter now reads this structure and excludes the self tile by its marker, not by comparing display names. A generic `.vdi-frame-occlusion` class alone is no longer accepted as evidence of speech. The targeted browser adapter test passed with an anonymized fixture covering equal self/remote names, active, inactive and missing speech attributes. No private DOM or participant identifiers are included in the fixture.
+
+This validates selectors and speech/silence signals on one live Teams layout, not every Teams layout or a complete updated recording-to-transcript run. Previously captured sessions without participant/speaker observations cannot gain reliable attribution merely by retranscribing the same audio. Google Meet live validation remains outstanding.
+
+---
+
 # Update 0.3.2 — simpler microphone setup
 
 Nine Node/browser tests passed; the optional native-toolbar test was skipped. The Chrome component test now checks a denied microphone permission leaves capture disabled, then verifies successful synthetic microphone access automatically saves the enabled setting. Recorder/transcription regression tests passed. The microphone setup screenshot was inspected. No physical microphone or live recording was accessed during this change; the user’s actual permission/device failure still requires verification in their browser.

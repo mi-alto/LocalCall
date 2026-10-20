@@ -34,6 +34,16 @@ test('Meet/Teams adapters: visible names, explicit speech, inactive widgets, mis
  await page.setContent('<div data-tid="participant-tile" data-is-speaking="true"><span data-tid="participant-name">Michele</span></div>');
  s=await page.evaluate(()=>LocalCallAdapter.snapshot(document,'teams.microsoft.com'));
  assert.deepEqual(s.speakers,['Michele']);
+ // Sanitized structure observed in Teams web on 2026-10-20. Same display name
+ // on the self tile and remote tile must not cause the remote speaker to vanish.
+ await page.setContent(`<div data-tid="myself-video"><div data-tid="participant-info-nametag"><span data-person-mri="self">Alex</span></div><div data-is-speaking="true">●</div></div>
+ <div data-cid="calling-participant-stream" role="menuitem"><div data-tid="participant-speaker" aria-hidden="true">Avatar</div><div data-tid="participant-info-nametag"><span data-person-mri="remote">Alex</span><span>Guest</span></div><div class="vdi-frame-occlusion" data-tid="voice-level-stream-outline" data-is-speaking="true">●</div></div>`);
+ assert.deepEqual(await page.evaluate(()=>LocalCallAdapter.snapshot(document,'teams.microsoft.com').speakers),['Alex']);
+ await page.locator('[data-tid="voice-level-stream-outline"]').evaluate(el=>el.setAttribute('data-is-speaking','false'));
+ assert.deepEqual(await page.evaluate(()=>LocalCallAdapter.snapshot(document,'teams.microsoft.com').speakers),[]);
+ await page.locator('[data-tid="voice-level-stream-outline"]').evaluate(el=>el.removeAttribute('data-is-speaking'));
+ assert.deepEqual(await page.evaluate(()=>LocalCallAdapter.snapshot(document,'teams.microsoft.com').speakers),[]);
+
  await page.setContent('<div data-participant-id="local" data-is-speaking="true"><span data-self-name="Io">Io</span></div><div data-participant-id="remote"><span class="zWGUib">Anna</span><div class="IisKdb" style="opacity:0">●</div></div>');
  assert.deepEqual(await page.evaluate(()=>LocalCallAdapter.snapshot(document,'meet.google.com').speakers),[]);
  }finally{await browser.close();}
