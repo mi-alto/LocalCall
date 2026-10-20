@@ -31,8 +31,16 @@ $('microphone').onchange=async()=>{
 };
 $('deviceId').onchange=()=>{$('message').textContent='Premi Abilita e verifica il microfono per salvare questo dispositivo.';};
 $('save').onclick=async()=>{
-  await chrome.storage.local.set({selfName:$('selfName').value,language:$('language').value});
-  $('message').textContent='Nome e lingua salvati per la prossima registrazione.';
+  $('save').disabled=true;
+  try{
+    await initialized;
+    await chrome.storage.local.set({selfName:$('selfName').value,language:$('language').value});
+    $('message').textContent='Impostazioni salvate.';
+    const tab=await chrome.tabs.getCurrent();
+    if(tab?.id!==undefined)await chrome.tabs.remove(tab.id);
+    else window.close();
+  }catch(e){$('message').textContent='Impossibile completare il salvataggio e la chiusura: '+e.message;}
+  finally{$('save').disabled=false;}
 };
 $('pair').onclick=async()=>{try{
   const token=$('token').value;

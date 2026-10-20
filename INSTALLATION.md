@@ -19,7 +19,7 @@ The interface currently uses Italian:
 
 1. In the local app, click **Copia codice per l’estensione** (copy pairing code).
 2. Open the extension's **Impostazioni** (settings) and paste the code.
-3. Save the manual code under **Collegamento manuale · avanzate** → **Verifica e salva codice**. Save your display name and language with **Salva nome e lingua**.
+3. Save the manual code under **Collegamento manuale · avanzate** → **Verifica e salva codice**. Save your display name and language with **Salva e chiudi**.
 4. To include your own voice, select a device and choose **Abilita e verifica il microfono**. Grant access; successful verification saves and enables capture automatically for the next recording. This is off by default.
 
 The pairing code authorizes access to the local app; it is not an online account. Keep it private. Microphone recording is independent of the meeting's mute button. Use headphones to reduce echo.
