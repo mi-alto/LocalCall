@@ -61,9 +61,11 @@ async function handle(m, sender) {
       const current = await chrome.runtime.sendMessage({target:'recorder',type:'status'});
       if (['recording','starting','stopping'].includes(current.status)) throw Error('Una registrazione è già attiva.');
       await chrome.scripting.executeScript({target:{tabId:tab.id},files:['adapters.js','content.js']});
+      const titleResults=await chrome.scripting.executeScript({target:{tabId:tab.id},func:()=>globalThis.LocalCallAdapter.meetingTitle()});
+      const meetingTitle=titleResults[0]?.result||tab.title;
       const streamId = await chrome.tabCapture.getMediaStreamId({targetTabId:tab.id});
       await chrome.storage.session.set({meetingTab:tab.id});
-      const result = await chrome.runtime.sendMessage({target:'recorder',type:'start',streamId,config,title:tab.title});
+      const result = await chrome.runtime.sendMessage({target:'recorder',type:'start',streamId,config,title:meetingTitle});
       if (result.error) throw Error(result.error);
       try { await chrome.tabs.sendMessage(tab.id,{type:'observe',epoch:result.epoch}); }
       catch (e) { await chrome.runtime.sendMessage({target:'recorder',type:'stop'}); throw Error('Pagina della call cambiata durante l’avvio. Riapri il plugin nella call.'); }

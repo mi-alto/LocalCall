@@ -1,3 +1,9 @@
+# Update 0.3.5 — History and meeting titles
+
+A targeted browser test passed for uniform History card height, visible start date/time, and cleaned Teams/Meet titles. The rendered History screenshot was inspected. New extension recordings read document.title from the meeting tab after injecting the adapter, stripping known provider suffixes, notification counters and join-page prefixes. Existing session titles are cleaned for display only; saved metadata is preserved. Displayed clock time is the recording start time in the viewer's local timezone, not the scheduled meeting time.
+
+---
+
 # Update 0.3.4 — Teams live DOM adapter
 
 On 2026-10-20 the user's live Teams web test exposed remote tiles as `[data-cid="calling-participant-stream"]`, names under `[data-tid="participant-info-nametag"] [data-person-mri]`, and a `[data-tid="voice-level-stream-outline"]` with `data-is-speaking="true"` during speech and `"false"` during a user-confirmed silent interval. The self tile is `[data-tid="myself-video"]`.

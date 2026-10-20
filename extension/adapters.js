@@ -33,5 +33,17 @@
     }
     return {participants:[...participants], speakers:[...speakers]};
   }
-  globalThis.LocalCallAdapter = {snapshot};
+function meetingTitle(raw) {
+  let title=(raw||'').replace(/\s+/g,' ').trim();
+  const teams=/\s*[|–—-]\s*Microsoft Teams$/i.test(title);
+  const meet=/^Meet\s*[-–—]|\s*[|–—-]\s*Google Meet$/i.test(title);
+  if(teams||meet){
+    title=title.replace(/^\(\d+\)\s*/, '');
+    title=title.replace(/\s*[|–—-]\s*(Microsoft Teams|Google Meet)$/i,'');
+    title=title.replace(/^(Partecipazione alla riunione|Join (the )?meeting)\s*\|\s*/i,'');
+    title=title.replace(/^Meet\s*[-–—]\s*/i,'').trim();
+  }
+  return title||'Riunione senza titolo';
+}
+  globalThis.LocalCallAdapter = {snapshot, meetingTitle:()=>meetingTitle(document.title)};
 })();

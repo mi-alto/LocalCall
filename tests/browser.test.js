@@ -136,3 +136,30 @@ test('Extension recorder: two streams, speaker events, stop flush, local final t
  assert.ok(session.tracks.mic.next_seq>1);
  }finally{await context.close();}
 });
+
+test('History: clean meeting titles, visible time and equal-height cards',async()=>{
+ const browser=await chromium.launch(launch);
+ try{
+  const page=await browser.newPage();
+  const sessions=[
+   {id:'a',title:'(30) Registrazione di prova | Microsoft Teams',created:1792479600,status:'done'},
+   {id:'b',title:'(31) Partecipazione alla riunione | Riunione di progetto con un titolo molto lungo per verificare le due righe nella scheda | Microsoft Teams',created:1792476000,status:'done'},
+   {id:'c',title:'Nota breve',created:1792472400,status:'done'}
+  ];
+  await page.route(base+'/api/sessions',route=>route.fulfill({json:sessions}));
+  await page.goto(base+'/#'+token);
+  await page.waitForFunction(()=>document.querySelectorAll('.history-card').length===3);
+  assert.equal(await page.locator('#reload').innerText(),'History');
+  assert.equal(await page.locator('.history-title').first().innerText(),'Registrazione di prova');
+  const heights=await page.locator('.history-card').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().height));
+  assert.equal(new Set(heights).size,1);
+  for(const text of await page.locator('.history-card time').allTextContents())assert.match(text,/\d{2}:\d{2}/);
+  await page.screenshot({path:'.test-output/history.png',fullPage:true});
+  await page.goto('about:blank');
+  await page.addScriptTag({path:'extension/adapters.js'});
+  for(const [title,expected] of [['(30) Registrazione di prova | Microsoft Teams','Registrazione di prova'],['(31) Partecipazione alla riunione | Sprint planning | Microsoft Teams','Sprint planning'],['Meet - Team sync','Team sync'],['Nota breve','Nota breve']]){
+   await page.evaluate(t=>{document.title=t;},title);
+   assert.equal(await page.evaluate(()=>LocalCallAdapter.meetingTitle()),expected);
+  }
+ }finally{await browser.close();}
+});
