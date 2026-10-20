@@ -2,11 +2,11 @@
 
 Local meeting recording and transcription for Apple Silicon Macs, with a Chrome/Brave extension for Google Meet and Microsoft Teams on the web. Audio is processed on your Mac using open-weight models; LocalCall does not send recordings or transcripts to an AI service.
 
-[Documentazione italiana](README.it.md) · [Installation](INSTALLATION.md) · [Test report (Italian)](TEST_REPORT.md)
+[Documentazione italiana](README.it.md) · [Installation](INSTALLATION.md) · [Test report](TEST_REPORT.md)
 
 ## Status
 
-Experimental, version 0.3.0. Transcription runs **after recording stops**, not live. The interface currently uses Italian; transcription supports Italian, English and automatic language detection.
+Experimental, extension version 0.3.6. Transcription runs **after recording stops**, not live. The interface currently uses Italian; transcription supports Italian, English and automatic language detection.
 
 The same extension targets Meet and Teams web in Chrome and Brave. Teams desktop, Safari and Firefox are not supported. Speaker names come from visible page elements and speaking indicators, not acoustic voice clustering. One Teams web layout has been inspected live, including speech/silence transitions (see TEST_REPORT.md); full attribution accuracy and other layouts remain unverified. Missing or ambiguous evidence is labeled “Non identificato” (unidentified).
 
@@ -17,6 +17,8 @@ The same extension targets Meet and Teams web in Chrome and Brave. Teams desktop
 - Chrome 116+ or a compatible current Brave release.
 
 ```sh
+git clone https://github.com/mi-alto/LocalCall.git
+cd LocalCall
 brew install whisper-cpp ffmpeg
 python3 scripts/setup.py
 python3 -m localcall.server
@@ -61,7 +63,7 @@ Synthetic audio generation uses macOS voices. Browser tests start isolated tempo
 LOCALCALL_NATIVE_ACTION=1 node --test tests/extension_flow.test.js
 ```
 
-Recorded validation: 32 Python tests with real local inference; three browser tests on Chrome and Brave; one full Chrome extension capture flow on a simulated Meet page. No real multi-person Meet/Teams call, hours-long recording or WER/DER benchmark has been validated. See [TEST_REPORT.md](TEST_REPORT.md) for scope and limitations.
+Latest pre-publication validation: 40 Python tests passed with real local inference; 10 Node/browser tests passed on Chrome, with the native-toolbar test intentionally skipped. Earlier validation also covered three browser tests on Brave and one full Chrome extension capture flow on a simulated Meet page. A live two-participant Teams test verified DOM speaker signals; complete diarization accuracy, live Meet, hours-long recordings and WER/DER benchmarks remain unverified. See [TEST_REPORT.md](TEST_REPORT.md) for scope and limitations.
 
 ## Project layout
 

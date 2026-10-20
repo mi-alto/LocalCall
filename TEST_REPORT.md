@@ -1,3 +1,9 @@
+# Pre-publication validation — 20 October 2026
+
+All 40 Python tests passed with local inference enabled. All 10 active Node/browser tests passed on Chrome for Testing; the native-toolbar test requiring a user gesture was skipped. Public setup instructions were updated for extension 0.3.6. Git history was checked for private runtime paths and common credential patterns (126 historical file versions; no matches); generated/private files remain ignored.
+
+---
+
 # Update 0.3.6 — participant emails
 
 Python: 40 tests run, 36 passed and four opt-in inference tests skipped. Targeted browser adapter and History tests passed for explicit Teams/Meet email fixtures, ignored unrelated/hidden links, no guessing from opaque IDs, email display and filtering. API tests verify validation, name association and retention when a participant disappears from later observations. A Teams stream email attribute was observed during the earlier live DOM inspection; Meet email extraction has only fixture coverage. No private addresses were committed in tests.
