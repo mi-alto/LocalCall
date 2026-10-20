@@ -7,3 +7,5 @@ for(const type of ['start','stop']) $(type).onclick=async()=>{try{lastError='';$
 $('settings').onclick=()=>chrome.runtime.openOptionsPage();
 $('open').onclick=async()=>{const {token}=await chrome.storage.local.get('token');chrome.tabs.create({url:'http://127.0.0.1:8765/#'+(token||'')});};
 refresh();setInterval(refresh,2000);
+
+$('activate').onclick=async()=>{try{$('activate').disabled=true;const result=await send('activate-service');if(result.error)throw Error(result.error);lastError='Servizio locale pronto. Puoi avviare la registrazione.';await refresh();}catch(e){lastError=e.message;$('status').textContent=e.message;}finally{$('activate').disabled=false;}};

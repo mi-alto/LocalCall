@@ -1,10 +1,30 @@
 const SUPPORTED = /^https:\/\/(meet\.google\.com|teams\.microsoft\.com|teams\.live\.com|teams\.cloud\.microsoft)\//;
 let starting = false;
+let activating;
+async function activateService() {
+  if (!activating) activating = (async()=>{
+    let result;
+    try { result=await chrome.runtime.sendNativeMessage('org.localcall.launcher',{action:'start'}); }
+    catch { throw Error('Collegamento Mac non installato. Segui INSTALLATION.md oppure avvia LocalCall dal Finder.'); }
+    if(result?.error)throw Error(result.error);
+    if(!result?.ok||typeof result.token!=='string')throw Error('Risposta del servizio non valida.');
+    await chrome.storage.local.set({token:result.token});
+    return {ok:true};
+  })().finally(()=>{activating=null;});
+  return activating;
+}
 async function ensureOffscreen() {
   if (!(await chrome.offscreen.hasDocument())) await chrome.offscreen.createDocument({url:'offscreen.html', reasons:['USER_MEDIA'], justification:'Registrare localmente audio della scheda e microfono durante la riunione.'});
 }
 async function handle(m, sender) {
   if (m.target !== 'worker') return;
+  if (m.type === 'activate-service') {
+    const internal=sender.url?.startsWith(chrome.runtime.getURL(''));
+    const meeting=sender.tab && sender.frameId===0 && SUPPORTED.test(sender.url||'');
+    if(!internal && !meeting)throw Error('Richiesta non autorizzata');
+    // Return no token to a page content script.
+    return activateService();
+  }
   if (m.type === 'observation') {
     const {meetingTab} = await chrome.storage.session.get('meetingTab');
     if (sender.tab?.id !== meetingTab || sender.frameId !== 0) return {active:false};
@@ -30,6 +50,11 @@ async function handle(m, sender) {
     try {
       const tab = await chrome.tabs.get(m.tabId);
       if (!SUPPORTED.test(tab?.url || '')) throw Error('Apri prima la scheda della call Meet o Teams.');
+      // Capture still requires the explicit toolbar action. Native startup never records.
+      let existing=await chrome.storage.local.get('token');
+      let online=false;
+      if(existing.token)try{online=(await fetch('http://127.0.0.1:8765/api/status',{headers:{Authorization:'Bearer '+existing.token},signal:AbortSignal.timeout(1500)})).ok;}catch{}
+      if(!online)await activateService();
       const config = await chrome.storage.local.get(['token', 'selfName', 'language', 'microphone', 'deviceId']);
       if (!config.token) throw Error('Configura prima il codice di abbinamento.');
       await ensureOffscreen();

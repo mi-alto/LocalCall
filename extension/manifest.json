@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "LocalCall · Trascrizioni private",
-  "version": "0.2.0",
+  "name": "LocalCall \u00b7 Trascrizioni private",
+  "version": "0.3.0",
   "minimum_chrome_version": "116",
   "description": "Registra Meet e Teams e trascrive esclusivamente sul tuo Mac.",
   "permissions": [
@@ -9,7 +9,8 @@
     "tabCapture",
     "offscreen",
     "storage",
-    "scripting"
+    "scripting",
+    "nativeMessaging"
   ],
   "host_permissions": [
     "http://127.0.0.1:8765/*",
@@ -35,5 +36,19 @@
         "mac": "Command+Shift+Y"
       }
     }
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://meet.google.com/*",
+        "https://teams.microsoft.com/*",
+        "https://teams.live.com/*",
+        "https://teams.cloud.microsoft/*"
+      ],
+      "js": [
+        "invite.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
 }

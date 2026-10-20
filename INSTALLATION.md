@@ -31,3 +31,21 @@ Open a meeting at `meet.google.com`, `teams.microsoft.com`, `teams.live.com` or 
 **REC** means recording; **!** indicates a warning. Choose **Termina e trascrivi**, then **Apri trascrizioni** to see the final transcript after local processing. TXT, SRT and JSON exports are available.
 
 This targets Meet and Teams **web**, not Teams desktop. Names depend on visible page indicators and have not yet been validated in a real call. Test with two participants before relying on attribution. Uncertain intervals remain unidentified.
+
+## Optional browser-driven startup (0.3.0)
+
+Install the extension first and copy its 32-letter ID from the browser extensions page. In this repository run:
+
+```sh
+python3 scripts/install_native_host.py --extension-id YOUR_EXTENSION_ID
+```
+
+This registers `org.localcall.launcher` for Chrome and Brave under your macOS user account. Only the explicitly supplied extension ID is authorized. If the two browsers show different IDs, supply `--extension-id` twice in the same command. Installing again replaces the authorized ID list.
+
+Reload the extension and reopen the meeting tab after upgrading to 0.3.0 (the new permission is `nativeMessaging`). On a Meet/Teams page, the LocalCall invitation offers **Attiva servizio**. It starts the local server and pairs the extension automatically. You can also click **Attiva servizio sul Mac** in the extension popup. Then use the toolbar's **Avvia registrazione** button: accepting the invitation alone never records audio. The invitation appears on supported pages, including landing pages, not only after joining a call.
+
+No Terminal window is needed in this mode. Whisper loads only during transcription and exits afterwards. The lightweight server stays running after activation; this version does not stop it automatically. A previously running 0.2 server must be closed before using the bridge.
+
+Native messaging registration contains an absolute launcher path, as required by the browser. **After moving or renaming the project, rerun the installer.** If the extension ID changes, use its new ID. The legacy Finder/Terminal startup and manual pairing remain available when the bridge is not installed. An unpacked ZIP installation needs the same registration with its own extension ID.
+
+To remove the bridge, remove `org.localcall.launcher.json` from the Chrome and Brave `NativeMessagingHosts` folders under `~/Library/Application Support/`, and remove `data/native-launcher` and `data/native-origins.json`. This does not remove recordings or stop an already-running server.

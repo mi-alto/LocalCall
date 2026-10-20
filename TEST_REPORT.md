@@ -1,3 +1,13 @@
+# Update 0.3.0 — browser-driven backend startup
+
+Validation after adding native messaging: **38 Python tests passed**, including real local inference, bounded native protocol messages, installer origin validation, detached backend startup and reuse of a real isolated server. **Five Node tests passed** (three Chrome browser regression tests and two worker authorization/token-isolation tests); the optional native toolbar capture test remained skipped in this run.
+
+The installed macOS launcher was also invoked using the actual framed native protocol: it started the updated backend and returned a pairing token successfully. This checks the installed launcher, not the browser’s native-host discovery or the new on-page invitation in a live meeting. The extension must be reloaded to grant its new nativeMessaging permission. Automatic invitation visibility and end-to-end native-host discovery from the user’s Brave profile remain to be confirmed after reload.
+
+The bridge does not preload Whisper. The lightweight server remains running after activation; model processes exit after transcription. The previously running inactive legacy server was stopped before validating the updated launcher. No private meeting audio was used.
+
+---
+
 # Collaudo LocalCall 0.2.0 — 20 ottobre 2026
 
 Mac Apple M3, 16 GiB RAM; Python 3.14.4, whisper.cpp 1.8.3, FFmpeg 7.1.1. Campioni sintetici italiani e inglesi, profili browser e dati temporanei. Nessuna call privata utilizzata.

@@ -271,7 +271,7 @@ class Handler(BaseHTTPRequestHandler):
         key = path.split('/')[3] if path.startswith('/api/sessions/') else 'catalog'
         with self.server.session_lock(key):
             if path == '/api/status' and method == 'GET':
-                return self.respond(200, dict(model=MODEL.exists() and VAD.exists(), engine=bool(shutil.which('whisper-cli')), ffmpeg=bool(shutil.which('ffmpeg')), local=True, version='0.2.0'))
+                return self.respond(200, dict(model=MODEL.exists() and VAD.exists(), engine=bool(shutil.which('whisper-cli')), ffmpeg=bool(shutil.which('ffmpeg')), local=True, version='0.3.0'))
             if path == '/api/sessions' and method == 'GET':
                 sessions = []
                 for p in self.server.data.glob('*/session.json'):

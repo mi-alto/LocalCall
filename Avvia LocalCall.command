@@ -17,7 +17,7 @@ try:
         status=json.load(response)
 except Exception:
     raise SystemExit(1)
-if status.get('version') != '0.2.0':
+if status.get('version') != '0.3.0':
     print('È aperta una versione precedente di LocalCall. Chiudila dal suo Terminale con Control+C, poi riapri questo file.')
     raise SystemExit(2)
 CHECK

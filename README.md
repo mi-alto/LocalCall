@@ -6,7 +6,7 @@ Local meeting recording and transcription for Apple Silicon Macs, with a Chrome/
 
 ## Status
 
-Experimental, version 0.2.0. Transcription runs **after recording stops**, not live. The interface currently uses Italian; transcription supports Italian, English and automatic language detection.
+Experimental, version 0.3.0. Transcription runs **after recording stops**, not live. The interface currently uses Italian; transcription supports Italian, English and automatic language detection.
 
 The same extension targets Meet and Teams web in Chrome and Brave. Teams desktop, Safari and Firefox are not supported. Speaker names come from visible page elements and speaking indicators, not acoustic voice clustering. Real meeting layouts have **not yet been validated**; missing or ambiguous evidence is labeled “Non identificato” (unidentified).
 
@@ -25,6 +25,8 @@ python3 -m localcall.server
 Setup downloads Whisper large-v3-turbo Q5_0 (approximately 574 MB) and Silero VAD, using pinned revisions and SHA256 verification. Model weights are not included in Git. This is a tested practical configuration, not a claim of best accuracy across all benchmarks. The VAD timestamp parser is verified against whisper.cpp 1.8.3; other versions require testing.
 
 Alternatively, open `Avvia LocalCall.command` and keep its Terminal window open. Use the local app at `http://127.0.0.1:8765`; the launcher opens it with its local pairing token. CPU fallback: `LOCALCALL_CPU=1 python3 -m localcall.server`.
+
+After one-time native bridge setup, the extension can start the backend without a Terminal window and pair automatically. Whisper is loaded only while transcribing; the idle Python server does not keep model weights in RAM. The lightweight server stays running after activation.
 
 Load the `extension` directory as an unpacked extension, then follow [INSTALLATION.md](INSTALLATION.md) to pair it. Create an installable ZIP with `python3 scripts/package_extension.py` (output in `dist/`).
 

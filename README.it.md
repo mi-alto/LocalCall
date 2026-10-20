@@ -74,3 +74,7 @@ Per i test di inferenza generare i campioni sintetici con `python3 scripts/make_
 ## Licenza
 
 Il codice di LocalCall è distribuito sotto [GNU GPL versione 3](LICENSE), esclusivamente questa versione (`GPL-3.0-only`). Strumenti e modelli di terze parti mantengono le proprie licenze; vedi [THIRD_PARTY.md](THIRD_PARTY.md).
+
+## Avvio dal browser (0.3)
+
+È disponibile il collegamento nativo descritto in [INSTALLAZIONE.md](INSTALLAZIONE.md): dopo la configurazione iniziale, **Attiva servizio** avvia il backend in background e abbina automaticamente l’estensione. Non serve il Terminale. Il modello si carica soltanto durante la trascrizione; il server leggero resta acceso. Dopo uno spostamento della cartella occorre registrare nuovamente il collegamento nativo.

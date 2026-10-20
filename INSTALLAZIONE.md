@@ -1,4 +1,4 @@
-# LocalCall 0.2 — estensione per Chrome e Brave
+# LocalCall 0.3 — estensione per Chrome e Brave
 
 È una sola estensione: funziona con **Google Meet e Microsoft Teams in versione web**, sia su Chrome sia su Brave. Non acquisisce la versione desktop di Teams e non è un’estensione Safari/Firefox.
 
@@ -10,7 +10,7 @@ Se avevi la versione precedente in esecuzione, chiudila dal suo Terminale (Contr
 
 ## 2. Installa il plugin
 
-1. Estrai `LocalCall-browser-0.2.0.zip`. Otterrai la cartella **LocalCall**, contenente `manifest.json`.
+1. Estrai `LocalCall-browser-0.3.0.zip`. Otterrai la cartella **LocalCall**, contenente `manifest.json`.
 2. Apri `chrome://extensions` in Chrome oppure `brave://extensions` in Brave.
 3. Attiva **Modalità sviluppatore**.
 4. Premi **Carica estensione non pacchettizzata** e seleziona la cartella **LocalCall** estratta, non lo ZIP.
@@ -45,3 +45,17 @@ Se il microfono viene scollegato, la registrazione degli altri continua e compar
 Chrome/Brave devono supportare Manifest V3, tabCapture e offscreen (Chrome 116 o successivo; consigliata una versione aggiornata). I test automatici distinguono l’audio dalla lettura dei nomi. I nomi sono ricavati dalle tessere visibili e dagli indicatori del sito: aggiornamenti di Meet/Teams, layout, iframe e schede inattive possono impedire di identificarli. In quei punti il testo resta **Non identificato**. Una call reale con due persone è ancora necessaria per confermare la precisione nel tuo layout.
 
 Le trascrizioni restano sul Mac. Internet serve a Meet/Teams per la call, ma LocalCall non invia audio o trascrizioni a servizi AI esterni.
+
+## Avvio dal browser senza Terminale (0.3)
+
+Dopo aver caricato l’estensione, copia il suo ID dalla pagina delle estensioni. Una sola volta, dalla cartella del progetto, esegui:
+
+```sh
+python3 scripts/install_native_host.py --extension-id ID_DELL_ESTENSIONE
+```
+
+Ricarica l’estensione e riapri la scheda Meet/Teams. Nel riquadro LocalCall premi **Attiva servizio**, oppure usa **Attiva servizio sul Mac** nel popup dell’estensione. Il backend parte in background e l’abbinamento è automatico. Per registrare, apri comunque l’estensione dalla barra e premi **Avvia registrazione**: la sola attivazione non registra audio.
+
+Il modello viene caricato solo durante la trascrizione, poi liberato. Rimane acceso soltanto il server leggero, senza Terminale. Il riquadro compare anche sulle pagine iniziali dei servizi, non solo nelle call. Chiudi un eventuale server 0.2 prima di usare questa funzione.
+
+Il collegamento nativo richiede un percorso assoluto: se sposti o rinomini di nuovo la cartella, riesegui l’installazione. Se Chrome e Brave mostrano ID diversi, passa due opzioni `--extension-id` nello stesso comando. Il nuovo elenco sostituisce il precedente. L’avvio manuale resta disponibile.
