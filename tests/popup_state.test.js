@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 const popup=readFileSync(new URL('../extension/popup.js',import.meta.url),'utf8');
 async function render(state,online){
- const elements=Object.fromEntries(['status','error','warning','micState','people','start','stop','activate','settings','open'].map(id=>[id,{}]));
+ const elements=Object.fromEntries(['status','error','warning','micState','people','start','stop','activate','settings','open','microphoneSetup'].map(id=>[id,{}]));
  const context=vm.createContext({document:{getElementById:id=>elements[id]},AbortSignal,fetch:async()=>({ok:online}),setInterval(){},chrome:{storage:{local:{get:async()=>({token:'test'})}},runtime:{sendMessage:async()=>state}}});
  vm.runInContext(popup,context);
  await new Promise(resolve=>setImmediate(resolve));

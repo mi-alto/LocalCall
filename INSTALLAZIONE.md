@@ -10,7 +10,7 @@ Se avevi la versione precedente in esecuzione, chiudila dal suo Terminale (Contr
 
 ## 2. Installa il plugin
 
-1. Estrai `LocalCall-browser-0.3.1.zip`. Otterrai la cartella **LocalCall**, contenente `manifest.json`.
+1. Estrai `LocalCall-browser-0.3.2.zip`. Otterrai la cartella **LocalCall**, contenente `manifest.json`.
 2. Apri `chrome://extensions` in Chrome oppure `brave://extensions` in Brave.
 3. Attiva **Modalità sviluppatore**.
 4. Premi **Carica estensione non pacchettizzata** e seleziona la cartella **LocalCall** estratta, non lo ZIP.
@@ -25,8 +25,8 @@ L’estensione non è pubblicata sul Chrome Web Store. È normale che il browser
 1. Nell’app LocalCall premi **Copia codice per l’estensione**.
 2. Dal popup dell’estensione apri **Impostazioni** e incolla il codice.
 3. Inserisci il tuo nome e scegli **Italiano**, **English** o rilevamento automatico.
-4. Per includere la tua voce, premi **Abilita microfono**, scegli il dispositivo, spunta **Registra anche il mio microfono** e salva. Il microfono è disattivato inizialmente.
-5. Premi **Salva e verifica**: deve comparire “Abbinamento riuscito”.
+4. Per includere la tua voce, apri **Configura la mia voce**, scegli il dispositivo e premi **Abilita e verifica il microfono**. Concedi il permesso: l’attivazione si salva automaticamente. Vale dalla prossima registrazione. Il microfono è disattivato inizialmente.
+5. Nome e lingua si salvano con **Salva nome e lingua**. Il codice manuale, se necessario, si trova in **Collegamento manuale · avanzate** → **Verifica e salva codice**.
 
 Il microfono del plugin è indipendente dal muto di Meet/Teams: se lo abiliti registra anche quando nella call sei in muto. Usa cuffie per evitare di registrare due volte la voce degli altri. Se non abiliti il microfono, viene registrato solo l’audio degli altri partecipanti riprodotto dalla scheda.
 

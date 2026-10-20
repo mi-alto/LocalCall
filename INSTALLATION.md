@@ -19,8 +19,8 @@ The interface currently uses Italian:
 
 1. In the local app, click **Copia codice per l’estensione** (copy pairing code).
 2. Open the extension's **Impostazioni** (settings) and paste the code.
-3. Enter your display name and select the language. Click **Salva e verifica** (save and verify).
-4. To include your own voice, choose **Abilita microfono**, grant access, select a device and enable **Registra anche il mio microfono**. This is off by default.
+3. Save the manual code under **Collegamento manuale · avanzate** → **Verifica e salva codice**. Save your display name and language with **Salva nome e lingua**.
+4. To include your own voice, select a device and choose **Abilita e verifica il microfono**. Grant access; successful verification saves and enables capture automatically for the next recording. This is off by default.
 
 The pairing code authorizes access to the local app; it is not an online account. Keep it private. Microphone recording is independent of the meeting's mute button. Use headphones to reduce echo.
 
@@ -49,3 +49,9 @@ No Terminal window is needed in this mode. Whisper loads only during transcripti
 Native messaging registration contains an absolute launcher path, as required by the browser. **After moving or renaming the project, rerun the installer.** If the extension ID changes, use its new ID. The legacy Finder/Terminal startup and manual pairing remain available when the bridge is not installed. An unpacked ZIP installation needs the same registration with its own extension ID.
 
 To remove the bridge, remove `org.localcall.launcher.json` from the Chrome and Brave `NativeMessagingHosts` folders under `~/Library/Application Support/`, and remove `data/native-launcher` and `data/native-origins.json`. This does not remove recordings or stop an already-running server.
+
+### Microphone setup (0.3.2)
+
+From the popup choose **Configura la mia voce** (or the next-recording microphone button while recording). Select a device and press **Abilita e verifica il microfono**. Grant permission: a successful check automatically enables and saves microphone capture for the next recording. No extra checkbox or save step is needed. The test stream is closed immediately; the current recording is not changed. Errors now distinguish permission denial, missing devices, unavailable saved devices and device read failures.
+
+Name/language have their own save button. Manual pairing is under the advanced disclosure. These controls replace the earlier microphone/pairing steps above.

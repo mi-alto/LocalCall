@@ -45,12 +45,12 @@ async function attachMicrophone() {
     micSource?.disconnect();
     micSource=context.createMediaStreamSource(mic);
     micSource.connect(micDestination);
-    micLive=true;state.microphone='active';notify();
+    micLive=true;state.microphone='active';state.microphoneError='';notify();
     mic.getAudioTracks().forEach(track=>track.addEventListener('ended',()=>{
       micSource?.disconnect();micLive=false;state.microphone='disconnected';
       warn('Microfono scollegato: continuo a registrare la riunione. La tua voce manca finché non si ricollega.');
     }));
-  }catch(e){micLive=false;state.microphone='unavailable';warn('Microfono non disponibile: registro solo la scheda. Abilitalo nelle impostazioni per la prossima call.');}
+  }catch(e){micLive=false;state.microphone='unavailable';state.microphoneError=microphoneError(e);warn(state.microphoneError+' Registro solo la scheda.');}
   finally{reconnecting=false;}
 }
 navigator.mediaDevices.addEventListener('devicechange',()=>{

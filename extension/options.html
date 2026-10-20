@@ -1,1 +1,13 @@
-<!doctype html><html lang="it"><head><meta charset="utf-8"><link rel="stylesheet" href="ui.css"></head><body><h1>Configura LocalCall</h1><p>Se hai installato il collegamento Mac, premi Attiva servizio sul Mac nel popup: il codice viene configurato automaticamente. In alternativa avvia l’app e copia qui il codice.</p><label>Codice di abbinamento<input id="token" type="password" autocomplete="off"></label><label>Il tuo nome<input id="selfName" placeholder="Io"></label><label>Lingua<select id="language"><option value="auto">Rilevamento automatico</option><option value="it">Italiano</option><option value="en">English</option></select></label><label><input type="checkbox" id="microphone"> Registra anche il mio microfono</label><label>Microfono<select id="deviceId"><option value="">Predefinito di sistema</option></select></label><button id="save">Salva e verifica</button><button id="permission">Abilita microfono</button><p id="message" role="status"></p><p>Il permesso del microfono va concesso qui prima della prima call. Se registri solo la scheda, la tua voce può mancare. Il microfono è indipendente dal tasto muto di Meet/Teams: viene registrato anche quando sei in muto nella call. Il servizio locale deve restare acceso durante registrazione e trascrizione; con il collegamento Mac non serve tenere aperto il Terminale.</p><script src="options.js"></script></body></html>
+<!doctype html><html lang="it"><head><meta charset="utf-8"><link rel="stylesheet" href="ui.css"></head><body>
+<h1>La tua voce nella registrazione</h1>
+<p>Premi il pulsante e consenti l’accesso al microfono. L’attivazione viene salvata automaticamente per le prossime registrazioni.</p>
+<label>Microfono<select id="deviceId"><option value="">Predefinito di sistema</option></select></label>
+<button id="permission">Abilita e verifica il microfono</button>
+<p id="message" role="status"></p>
+<label><input type="checkbox" id="microphone"> Includi la mia voce nelle prossime registrazioni</label>
+<p class="note">Il microfono registra anche quando sei in muto su Meet/Teams. Usa cuffie. Le modifiche valgono dalla prossima registrazione; quella in corso non viene interrotta.</p>
+<label>Il tuo nome<input id="selfName" placeholder="Io"></label>
+<label>Lingua<select id="language"><option value="auto">Rilevamento automatico</option><option value="it">Italiano</option><option value="en">English</option></select></label>
+<button id="save">Salva nome e lingua</button>
+<details><summary>Collegamento manuale · avanzate</summary><p>Con Attiva servizio sul Mac l’abbinamento è automatico.</p><label>Codice di abbinamento<input id="token" type="password" autocomplete="off"></label><button id="pair">Verifica e salva codice</button></details>
+<script src="microphone.js"></script><script src="options.js"></script></body></html>

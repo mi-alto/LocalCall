@@ -1,3 +1,9 @@
+# Update 0.3.2 — simpler microphone setup
+
+Nine Node/browser tests passed; the optional native-toolbar test was skipped. The Chrome component test now checks a denied microphone permission leaves capture disabled, then verifies successful synthetic microphone access automatically saves the enabled setting. Recorder/transcription regression tests passed. The microphone setup screenshot was inspected. No physical microphone or live recording was accessed during this change; the user’s actual permission/device failure still requires verification in their browser.
+
+---
+
 # Update 0.3.1 — recording status clarity
 
 Six targeted Node tests passed: popup recording/idle/offline states, active-service button disabling, separate microphone warnings, preserved REC badge, and native worker authorization. No recording was restarted or interrupted for this UI change. Reload the extension only after stopping and saving an active recording.

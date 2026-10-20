@@ -78,6 +78,17 @@ test('Extension recorder: two streams, speaker events, stop flush, local final t
  await page.goto(`chrome-extension://${extensionId}/options.html`);
  assert.deepEqual(await page.locator('#language option').evaluateAll(nodes=>nodes.map(n=>n.value)),['auto','it','en']);
  assert.equal(await page.locator('#microphone').isChecked(),false);
+ await page.evaluate(()=>{globalThis.testOriginalMic=navigator.mediaDevices.getUserMedia;navigator.mediaDevices.getUserMedia=async()=>{throw new DOMException('Denied','NotAllowedError');};});
+ await page.locator('#permission').click();
+ await page.waitForFunction(()=>document.getElementById('message').textContent.includes('Permesso microfono negato'));
+ assert.equal(await page.locator('#microphone').isChecked(),false);
+ await page.evaluate(()=>{navigator.mediaDevices.getUserMedia=globalThis.testOriginalMic;});
+ await page.locator('#permission').click();
+ await page.waitForFunction(()=>document.getElementById('message').textContent.includes('Microfono pronto'));
+ assert.equal(await page.locator('#microphone').isChecked(),true);
+ assert.equal(await page.evaluate(async()=>(await chrome.storage.local.get('microphone')).microphone),true);
+ await page.screenshot({path:'.test-output/microphone-setup.png'});
+
  await page.goto(`chrome-extension://${extensionId}/offscreen.html`);
  let metadataFailed=false;
  await context.route(base+'/api/sessions/*/events',async route=>{if(!metadataFailed){metadataFailed=true;await route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({error:'Synthetic event error'})});}else await route.continue();});

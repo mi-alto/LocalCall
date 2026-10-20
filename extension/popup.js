@@ -22,7 +22,12 @@ async function refresh(){
     $('warning').textContent=warnings.length?'Avvisi'+(recording?' · la registrazione continua':'')+': '+warnings.join(' '):'';
     $('error').textContent=s.error||lastError;
     $('micState').textContent=recording?(s.microphone==='active'?'Audio registrato: scheda + microfono. Il microfono registra anche quando sei in muto nella call.':'Audio registrato: solo la scheda. La tua voce dal microfono non viene registrata.') : '';
+    $('microphoneSetup').hidden=recording&&s.microphone==='active';
+    $('microphoneSetup').textContent=recording?'Abilita la mia voce per la prossima registrazione':'Configura la mia voce';
     $('people').textContent=recording?(s.speakers?.length?'Sta parlando: '+s.speakers.join(', '):'Nomi dei parlanti non rilevati: le parti senza attribuzione resteranno “Non identificato”.'):'';
+    $('activate').hidden=online;
+    $('start').hidden=busy;
+    $('stop').hidden=!busy;
     $('start').disabled=busy;
     $('start').textContent=recording?'● Registrazione in corso':'● Avvia registrazione';
     $('stop').disabled=!recording;
@@ -41,6 +46,7 @@ $('activate').onclick=async()=>{
   catch(e){lastError=e.message;}
   finally{activating=false;await refresh();}
 };
+$('microphoneSetup').onclick=()=>chrome.runtime.openOptionsPage();
 $('settings').onclick=()=>chrome.runtime.openOptionsPage();
 $('open').onclick=async()=>{const {token}=await chrome.storage.local.get('token');chrome.tabs.create({url:'http://127.0.0.1:8765/#'+(token||'')});};
 refresh();setInterval(refresh,2000);
