@@ -76,6 +76,17 @@ class ReliableAPITests(unittest.TestCase):
         self.assertNotIn('hashes',raw['tracks']['remote'])
         self.assertLess(len(json.dumps(raw)),1000)
 
+    def test_contact_validation_and_history_persistence(self):
+        sid=self.create();base='/api/sessions/'+sid
+        contacts=[{'name':'Anna','email':'anna@example.org'}, {'name':'Other','email':'other@example.org'}, {'name':'Anna','email':'bad@example.org<script>'}]
+        event={'t':0,'speakers':[],'participants':['Anna'],'contacts':contacts}
+        self.assertEqual(self.request(base+'/events','POST',[event])[0],200)
+        expected=[{'name':'Anna','email':'anna@example.org'}]
+        self.assertEqual(json.loads(self.request(base)[1])['contacts'],expected)
+        self.request(base+'/events','POST',[{'t':1,'speakers':[],'participants':[]}])
+        listing=json.loads(self.request('/api/sessions')[1])
+        self.assertEqual(next(s for s in listing if s['id']==sid)['contacts'],expected)
+
 class TimingTests(unittest.TestCase):
     def test_boundary_word_is_clipped_to_correct_speech_island(self):
         from localcall.diarize import constrain_to_speech

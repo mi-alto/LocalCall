@@ -74,6 +74,21 @@ def stored_names(path, stamp, size, kind):
     except (OSError, ValueError, TypeError, AttributeError):
         return ()
 
+def valid_contacts(values, participants):
+    result = {}
+    if not isinstance(values, list):
+        return []
+    for value in values[:100]:
+        if not isinstance(value, dict):
+            continue
+        name, email = value.get('name'), value.get('email')
+        if not isinstance(name, str) or name not in participants or not isinstance(email, str):
+            continue
+        email = email.strip()
+        if len(email) <= 254 and re.fullmatch(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,}", email):
+            result[(name, email.casefold())] = {'name': name, 'email': email}
+    return list(result.values())
+
 def participant_names(folder, meta):
     names = set(meta.get('participants', []))
     for filename, kind in [('events.jsonl', 'events'), ('transcript.json', 'transcript')]:
@@ -399,7 +414,8 @@ class Handler(BaseHTTPRequestHandler):
                     if not isinstance(participants,list): participants=[]
                     names = list(dict.fromkeys(str(n)[:100] for n in e['speakers']))
                     # Too many simultaneous speakers is ambiguous: never pick the first 30.
-                    valid.append(dict(t=e['t'], speakers=names if len(names)<=30 else [], participants=[str(n)[:100] for n in participants][:100]))
+                    clean_participants=[str(n)[:100] for n in participants][:100]
+                    valid.append(dict(t=e['t'], speakers=names if len(names)<=30 else [], participants=clean_participants, contacts=valid_contacts(e.get('contacts', []), clean_participants)))
                 with (folder/'events.jsonl').open('a') as f:
                     for e in valid:
                         f.write(json.dumps(e, ensure_ascii=False)+'\n')
@@ -407,6 +423,11 @@ class Handler(BaseHTTPRequestHandler):
                 meta['dropped_events'] = meta.get('dropped_events',0) + len(events)-len(valid)
                 if valid:
                     meta['latest_event'] = valid[-1]
+                    contacts={(c['name'],c['email'].casefold()):c for c in meta.get('contacts', [])}
+                    for e in valid:
+                        for c in e['contacts']:
+                            contacts[(c['name'],c['email'].casefold())]=c
+                    meta['contacts']=list(contacts.values())[:1000]
                     meta['participants'] = sorted(set(participant_names(folder, meta)).union(*(set(e['participants']+e['speakers']) for e in valid)))
             elif action in ('audio/remote', 'audio/mic'):
                 name = action.split('/')[1]

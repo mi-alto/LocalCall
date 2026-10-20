@@ -75,3 +75,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and [THIRD_PA
 ## History
 
 The sidebar searches meeting titles and detected participant names. Optional **Dal / Al** date filters use the recording start date in your local timezone and include both boundary days. The transcript page shows the detected participant list. Names not captured in old sessions cannot be recovered by this search. **Nuova registrazione / Impostazioni** opens the separate setup and microphone recording view.
+
+Participant emails are captured only when explicitly exposed on the same meeting tile (email attributes or visible mailto links; Teams stream data-tid was observed to contain an address). No profile APIs, inferred addresses or chat-wide email scraping are used. Emails remain local, appear under participant names and are searchable in History. Availability depends on the provider and participant privacy settings; live Meet email extraction is not yet verified. Existing recordings without captured emails remain unchanged.

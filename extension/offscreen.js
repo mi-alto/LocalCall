@@ -134,7 +134,7 @@ chrome.runtime.onMessage.addListener((m,sender,reply)=>{
       const delayed=typeof e.observedAt!=='number'||now()-e.observedAt>1250||now()<e.observedAt;
       if(valid){
         const speakers=delayed||e.speakers.length>30?[]:e.speakers.map(n=>String(n).slice(0,100));
-        eventBuffer.push({t:Math.max(0,context.currentTime-audioEpoch),speakers,participants:e.participants.slice(0,100)});
+        eventBuffer.push({t:Math.max(0,context.currentTime-audioEpoch),speakers,participants:e.participants.slice(0,100),contacts:Array.isArray(e.contacts)?e.contacts.slice(0,100):[]});
         if(eventBuffer.length>100)eventBuffer.splice(0,eventBuffer.length-100);
         state.participants=e.participants;state.speakers=speakers;state.observerStale=delayed;lastObservation=now();
       }

@@ -34,6 +34,13 @@ test('Meet/Teams adapters: visible names, explicit speech, inactive widgets, mis
  await page.setContent('<div data-tid="participant-tile" data-is-speaking="true"><span data-tid="participant-name">Michele</span></div>');
  s=await page.evaluate(()=>LocalCallAdapter.snapshot(document,'teams.microsoft.com'));
  assert.deepEqual(s.speakers,['Michele']);
+ await page.setContent('<div data-cid="calling-participant-stream" data-tid="alex@example.org"><div data-tid="participant-info-nametag"><span data-person-mri="opaque-id">Alex</span></div></div><a href="mailto:unrelated@example.org">Unrelated chat</a>');
+ assert.deepEqual(await page.evaluate(()=>LocalCallAdapter.snapshot(document,'teams.microsoft.com').contacts),[{name:'Alex',email:'alex@example.org'}]);
+ await page.setContent('<div data-participant-id="opaque-id" data-email="anna@example.org"><span class="zWGUib">Anna</span></div>');
+ assert.deepEqual(await page.evaluate(()=>LocalCallAdapter.snapshot(document,'meet.google.com').contacts),[{name:'Anna',email:'anna@example.org'}]);
+ await page.setContent('<div data-participant-id="user@example.org"><span class="zWGUib">Anna</span><a style="display:none" href="mailto:hidden@example.org">Hidden</a></div>');
+ assert.equal(await page.evaluate(()=>LocalCallAdapter.snapshot(document,'meet.google.com').contacts),undefined);
+
  // Sanitized structure observed in Teams web on 2026-10-20. Same display name
  // on the self tile and remote tile must not cause the remote speaker to vanish.
  await page.setContent(`<div data-tid="myself-video"><div data-tid="participant-info-nametag"><span data-person-mri="self">Alex</span></div><div data-is-speaking="true">●</div></div>
@@ -143,7 +150,7 @@ test('History: clean meeting titles, visible time and equal-height cards',async(
  try{
   const page=await browser.newPage();
   const sessions=[
-   {id:'a',title:'(30) Registrazione di prova | Microsoft Teams',created:1792479600,status:'done',participants:['Anna Rossi']},
+   {id:'a',title:'(30) Registrazione di prova | Microsoft Teams',created:1792479600,status:'done',participants:['Anna Rossi'],contacts:[{name:'Anna Rossi',email:'anna@example.org'}]},
    {id:'b',title:'(31) Partecipazione alla riunione | Riunione di progetto con un titolo molto lungo per verificare le due righe nella scheda | Microsoft Teams',created:1792389600,status:'done',participants:['Luca Bianchi']},
    {id:'c',title:'Nota breve',created:1792472400,status:'done'}
   ];
@@ -159,6 +166,9 @@ test('History: clean meeting titles, visible time and equal-height cards',async(
   await page.locator('#detail').waitFor({state:'visible'});
   assert.equal(await page.locator('#pair').isVisible(),false);
   assert.match(await page.locator('#participants').innerText(),/Anna Rossi/);
+  assert.match(await page.locator('#participants').innerText(),/anna@example.org/);
+  await page.locator('#search').fill('anna@example.org');
+  assert.equal(await page.locator('.history-card').count(),1);
   await page.locator('#search').fill('anna');
   assert.equal(await page.locator('.history-card').count(),1);
   await page.locator('#search').fill('riunione di progetto');

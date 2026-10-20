@@ -8,16 +8,34 @@
     return box.width>0&&box.height>0&&getComputedStyle(el).visibility!=='hidden';
   }
   function clean(s) { return (s||'').replace(/\s+/g,' ').trim().slice(0,100); }
+  function emailAddress(value){
+    const email=(value||'').trim();
+    return email.length<=254&&/^[A-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[A-Z0-9](?:[A-Z0-9.-]*[A-Z0-9])?\.[A-Z]{2,}$/i.test(email)?email:'';
+  }
+  function tileEmails(tile,label,meet){
+    const values=[];
+    for(const el of [tile,label])if(el){
+      values.push(el.getAttribute('data-email'),el.getAttribute('data-email-address'));
+    }
+    // Observed in Teams: the stream tile's data-tid can be an email.
+    // Never interpret opaque participant IDs or fetch private profile APIs.
+    if(!meet&&tile.matches('[data-cid="calling-participant-stream"]'))values.push(tile.getAttribute('data-tid'));
+    for(const el of tile.querySelectorAll('a[href^="mailto:"]'))if(visible(el)){
+      try{values.push(decodeURIComponent(el.getAttribute('href').slice(7).split('?')[0]));}catch{}
+    }
+    return [...new Set(values.map(emailAddress).filter(Boolean))];
+  }
   function snapshot(doc = document, host = location.hostname) {
     const meet = host === 'meet.google.com';
     const tiles = [...doc.querySelectorAll(meet ? '[data-participant-id], [data-requested-participant-id]' : '[data-cid="calling-participant-stream"], [data-tid="myself-video"], [data-tid="participant-tile"], [data-tid="video-tile"], [data-participant-id]')];
-    const participants = new Set(), speakers = new Set();
+    const participants = new Set(), speakers = new Set(), contacts = new Map();
     for (const tile of tiles) {
       if (!visible(tile)) continue;
       const label = tile.querySelector(meet ? '[data-self-name], [data-participant-name], .zWGUib, .notranslate' : '[data-tid="participant-info-nametag"] [data-person-mri], [data-tid="participant-name"], [data-tid="display-name"], [data-participant-name]');
       const name = clean(tile.getAttribute('data-participant-name') || label?.getAttribute('data-self-name') || label?.getAttribute('data-participant-name') || label?.textContent);
       if (!name) continue;
       participants.add(name);
+      for(const email of tileEmails(tile,label,meet))contacts.set(name+'\0'+email.toLowerCase(),{name,email});
       // Use explicit speaking state or a visible speaking indicator; never infer
       // from a merely present audio-level widget, focus, selection, or tile order.
       const explicit = tile.matches('[data-is-speaking="true"], [data-speaking="true"]');
@@ -31,7 +49,7 @@
       const self=tile.matches('[data-tid="myself-video"], [data-is-self="true"], [data-self="true"]')||!!tile.querySelector('[data-self-name]')||/^(you|tu)$|\((you|tu)\)$/i.test(name);
       if (active&&!self) speakers.add(name);
     }
-    return {participants:[...participants], speakers:[...speakers]};
+    return {participants:[...participants], speakers:[...speakers], ...(contacts.size?{contacts:[...contacts.values()]}:{})};
   }
 function meetingTitle(raw) {
   let title=(raw||'').replace(/\s+/g,' ').trim();
