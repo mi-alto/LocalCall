@@ -129,7 +129,7 @@ def process(folder):
             try:
                 with (folder/f'{track}-engine.log').open('w') as log:
                     subprocess.run(['ffmpeg', '-nostdin', '-y', '-i', str(audio), '-af', 'aresample=async=1:first_pts=0', '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', str(wav)], stdout=log, stderr=log, check=True, timeout=3600)
-                    cmd = ['whisper-cli', '-m', str(MODEL), '-f', str(wav), '-l', meta['language'], '-ojf', '-of', str(output), '-ml', '1', '-sow', '-t', '4', '-sns', '--vad', '-vm', str(VAD)]
+                    cmd = ['whisper-cli', '-m', str(MODEL), '-f', str(wav), '-l', meta['language'], '-ojf', '-of', str(output), '-ml', '1', '-sow', '-t', '4', '-sns', '--vad', '-vm', str(VAD), '-vsd', '500', '-vp', '200']
                     if os.environ.get('LOCALCALL_CPU') == '1':
                         cmd.append('-ng')
                     subprocess.run(cmd, stdout=log, stderr=log, check=True, timeout=43200)

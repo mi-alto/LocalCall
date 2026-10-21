@@ -16,6 +16,23 @@ async function activateService() {
 async function ensureOffscreen() {
   if (!(await chrome.offscreen.hasDocument())) await chrome.offscreen.createDocument({url:'offscreen.html', reasons:['USER_MEDIA'], justification:'Registrare localmente audio della scheda e microfono durante la riunione.'});
 }
+async function stopMeeting() {
+  const {meetingTab}=await chrome.storage.session.get('meetingTab');
+  if(meetingTab!==undefined)await chrome.tabs.sendMessage(meetingTab,{type:'stop-observing'}).catch(()=>{});
+  let result={ok:true};
+  if(await chrome.offscreen.hasDocument())result=await chrome.runtime.sendMessage({target:'recorder',type:'stop'});
+  if(result?.error)throw Error(result.error);
+  await chrome.alarms.clear('meeting-lifecycle');
+  await chrome.storage.session.remove(['meetingTab','meetingSeen','meetingMissingSince']);
+  return result;
+}
+async function checkMeeting(present, now=Date.now()) {
+  const state=await chrome.storage.session.get(['meetingSeen','meetingMissingSince']);
+  if(present){await chrome.storage.session.set({meetingSeen:true,meetingMissingSince:0});return;}
+  if(!state.meetingSeen)return; // A recording started in the lobby is not an ended call.
+  if(!state.meetingMissingSince)await chrome.storage.session.set({meetingMissingSince:now});
+  else if(now-state.meetingMissingSince>=60000)await stopMeeting();
+}
 async function handle(m, sender) {
   if (m.target !== 'worker') return;
   if (m.type === 'activate-service') {
@@ -29,6 +46,7 @@ async function handle(m, sender) {
     const {meetingTab} = await chrome.storage.session.get('meetingTab');
     if (sender.tab?.id !== meetingTab || sender.frameId !== 0) return {active:false};
     if (!(await chrome.offscreen.hasDocument())) return {active:false};
+    if(typeof m.event?.inMeeting==='boolean')await checkMeeting(m.event.inMeeting);
     return chrome.runtime.sendMessage({...m, target:'recorder'});
   }
   if (sender.tab && !sender.url?.startsWith(chrome.runtime.getURL(''))) throw Error('Richiesta non autorizzata');
@@ -64,18 +82,17 @@ async function handle(m, sender) {
       const titleResults=await chrome.scripting.executeScript({target:{tabId:tab.id},func:()=>globalThis.LocalCallAdapter.meetingTitle()});
       const meetingTitle=titleResults[0]?.result||tab.title;
       const streamId = await chrome.tabCapture.getMediaStreamId({targetTabId:tab.id});
-      await chrome.storage.session.set({meetingTab:tab.id});
+      await chrome.storage.session.set({meetingTab:tab.id,meetingSeen:false,meetingMissingSince:0});
       const result = await chrome.runtime.sendMessage({target:'recorder',type:'start',streamId,config,title:meetingTitle});
       if (result.error) throw Error(result.error);
       try { await chrome.tabs.sendMessage(tab.id,{type:'observe',epoch:result.epoch}); }
       catch (e) { await chrome.runtime.sendMessage({target:'recorder',type:'stop'}); throw Error('Pagina della call cambiata durante l’avvio. Riapri il plugin nella call.'); }
+      await chrome.alarms.create('meeting-lifecycle',{periodInMinutes:0.5});
       return result;
     } finally { starting = false; }
   }
   if (m.type === 'stop') {
-    const {meetingTab} = await chrome.storage.session.get('meetingTab');
-    if (meetingTab) await chrome.tabs.sendMessage(meetingTab,{type:'stop-observing'}).catch(()=>{});
-    return chrome.runtime.sendMessage({target:'recorder', type:'stop'});
+    return stopMeeting();
   }
 }
 chrome.runtime.onMessage.addListener((m,sender,reply)=>{
@@ -94,4 +111,26 @@ chrome.tabs.onUpdated.addListener(async(tabId,change,tab)=>{
     await chrome.scripting.executeScript({target:{tabId},files:['adapters.js','content.js']});
     await chrome.tabs.sendMessage(tabId,{type:'observe',epoch:s.epoch});
   }catch(e){await chrome.action.setBadgeText({text:'!'});}
+});
+
+// Alarms also work when background-tab timers are throttled.
+chrome.alarms.onAlarm.addListener(async alarm=>{
+  if(alarm.name!=='meeting-lifecycle')return;
+  try {
+    const {meetingTab}=await chrome.storage.session.get('meetingTab');
+    if(meetingTab===undefined)return;
+    const tab=await chrome.tabs.get(meetingTab);
+    if(!SUPPORTED.test(tab.url||'')){await stopMeeting();return;}
+    const result=await chrome.scripting.executeScript({target:{tabId:meetingTab},func:()=>globalThis.LocalCallAdapter?.inMeeting()});
+    if(typeof result[0]?.result==='boolean')await checkMeeting(result[0].result);
+  } catch { /* A temporarily unavailable page is not evidence that the call ended. */ }
+});
+chrome.tabs.onRemoved.addListener(async tabId=>{
+  const {meetingTab}=await chrome.storage.session.get('meetingTab');
+  if(tabId===meetingTab)await stopMeeting();
+});
+chrome.tabs.onUpdated.addListener(async(tabId,change)=>{
+  if(!change.url||SUPPORTED.test(change.url))return;
+  const {meetingTab}=await chrome.storage.session.get('meetingTab');
+  if(tabId===meetingTab)await stopMeeting();
 });

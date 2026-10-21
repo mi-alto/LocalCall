@@ -6,7 +6,7 @@ Local meeting recording and transcription for Apple Silicon Macs, with a Chrome/
 
 ## Status
 
-Experimental, extension version 0.3.6. Transcription runs **after recording stops**, not live. The interface currently uses Italian; transcription supports Italian, English and automatic language detection.
+Experimental, extension version 0.3.7. Transcription runs **after recording stops**, not live. The interface currently uses Italian; transcription supports Italian, English and automatic language detection.
 
 The same extension targets Meet and Teams web in Chrome and Brave. Teams desktop, Safari and Firefox are not supported. Speaker names come from visible page elements and speaking indicators, not acoustic voice clustering. One Teams web layout has been inspected live, including speech/silence transitions (see TEST_REPORT.md); full attribution accuracy and other layouts remain unverified. Missing or ambiguous evidence is labeled “Non identificato” (unidentified).
 
@@ -79,3 +79,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and [THIRD_PA
 The sidebar searches meeting titles and detected participant names. Optional **Dal / Al** date filters use the recording start date in your local timezone and include both boundary days. The transcript page shows the detected participant list. Names not captured in old sessions cannot be recovered by this search. **Nuova registrazione / Impostazioni** opens the separate setup and microphone recording view.
 
 Participant emails are captured only when explicitly exposed on the same meeting tile (email attributes or visible mailto links; Teams stream data-tid was observed to contain an address). No profile APIs, inferred addresses or chat-wide email scraping are used. Emails remain local, appear under participant names and are searchable in History. Availability depends on the provider and participant privacy settings; live Meet email extraction is not yet verified. Existing recordings without captured emails remain unchanged.
+
+### Automatic stop and retained audio
+
+Version 0.3.7 stops capture when the meeting tab closes or navigates outside Meet/Teams. After detecting the in-call leave button, it also stops when that control has been absent for at least 60 seconds. A background alarm checks every 30 seconds, including when tab timers are throttled. Silence alone never stops recording. This DOM-based heuristic needs a recognized leave control; changed provider layouts may still require manual stop. Reload the extension after upgrading, outside an active recording.
+
+Original `remote.webm` (tab) and `mic.webm` (optional microphone) remain in `data/<session-id>/`. Enabled microphone capture is independent of the meeting mute button. Files are not uploaded to a transcription provider. Stop recordings before leaving the computer if automatic detection is unavailable.
+
+Speech detection now retains 200 ms around speech and waits 500 ms before splitting a pause, reducing clipped words and fragmented context. Speech-boundary changes no longer automatically erase an otherwise observed speaker; real speaker changes and missing coverage remain conservative. This does not guarantee correct transcription, especially for distant microphones, echo, jargon or background voices.

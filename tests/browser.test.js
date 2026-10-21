@@ -25,6 +25,13 @@ test('Meet/Teams adapters: visible names, explicit speech, inactive widgets, mis
  const page=await browser.newPage();
  await page.setContent(`<div data-participant-id="a"><span class="zWGUib">Anna</span><div aria-label="Anna is speaking">●</div></div><div data-participant-id="b"><span class="zWGUib">Luca</span><div data-audio-level="0"></div></div><div data-participant-id="c" style="display:none" data-is-speaking="true"><span class="zWGUib">Hidden</span></div>`);
  await page.addScriptTag({path:'extension/adapters.js'});
+ assert.equal(await page.evaluate(()=>LocalCallAdapter.inMeeting()),false);
+ await page.evaluate(()=>{const b=document.createElement('button');b.id='hangup-button';b.style.display='none';document.body.append(b);});
+ assert.equal(await page.evaluate(()=>LocalCallAdapter.inMeeting()),true);
+ await page.locator('#hangup-button').evaluate(b=>{b.removeAttribute('id');b.setAttribute('aria-label','Leave call');});
+ assert.equal(await page.evaluate(()=>LocalCallAdapter.inMeeting()),true);
+ await page.locator('button').evaluate(b=>b.remove());
+ assert.equal(await page.evaluate(()=>LocalCallAdapter.inMeeting()),false);
  let s=await page.evaluate(()=>LocalCallAdapter.snapshot(document,'meet.google.com'));
  assert.deepEqual(s,{participants:['Anna','Luca'],speakers:['Anna']});
  await page.locator('[aria-label]').evaluate(el=>el.remove());

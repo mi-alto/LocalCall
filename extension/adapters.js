@@ -63,5 +63,9 @@ function meetingTitle(raw) {
   }
   return title||'Riunione senza titolo';
 }
-  globalThis.LocalCallAdapter = {snapshot, meetingTitle:()=>meetingTitle(document.title)};
+  function inMeeting() {
+    // Presence, not CSS visibility: toolbars can hide while presenting.
+    return !!document.querySelector('#hangup-button, [data-tid="call-hangup"], [data-tid="hangup-button"], button[aria-label="Leave call"], button[aria-label="Leave meeting"], button[aria-label="Abbandona la chiamata"], button[aria-label="Abbandona la riunione"], button[aria-label="Esci dalla chiamata"]');
+  }
+  globalThis.LocalCallAdapter = {inMeeting, snapshot, meetingTitle:()=>meetingTitle(document.title)};
 })();

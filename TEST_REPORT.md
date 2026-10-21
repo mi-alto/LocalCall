@@ -95,3 +95,9 @@ Non collaudati: riunioni di ore, consumi massimi, sospensione del Mac, disconnes
 Prima dell'uso regolare serve una breve call reale con due persone, alternando frasi note e verificando nomi nel popup e tempi nell'esportazione. Il modello trascrive dopo lo stop; non offre testo live durante la call.
 
 La review Claude e le riproduzioni in reviews documentano la versione precedente: non sono il rapporto della versione corretta. Gli script verify_findings.py e verify_options.mjs riproducono difetti storici e non fanno parte della suite corrente.
+
+## 2026-10-21: automatic stop and transcription boundaries
+
+Added lifecycle tests for prejoin, short control disappearance, recovery, a sustained meeting end, and DOM control presence even with hidden toolbars. A private 120-second local sample was compared with 500 ms VAD silence / 200 ms padding: the output was more coherent and had punctuation, but no human reference transcript was available, so no accuracy percentage is claimed. Source audio remains private and unchanged. Live provider call-end behavior still needs confirmation after reloading the extension.
+
+Validation: 41 Python tests passed including real local inference and long-pause timing; 11 JavaScript/browser tests passed with one optional native-toolbar test skipped. Additional recorded-tab closure/navigation regression test added and run separately.

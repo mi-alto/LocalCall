@@ -78,3 +78,11 @@ Il codice di LocalCall è distribuito sotto [GNU GPL versione 3](LICENSE), esclu
 ## Avvio dal browser (0.3)
 
 È disponibile il collegamento nativo descritto in [INSTALLAZIONE.md](INSTALLAZIONE.md): dopo la configurazione iniziale, **Attiva servizio** avvia il backend in background e abbina automaticamente l’estensione. Non serve il Terminale. Il modello si carica soltanto durante la trascrizione; il server leggero resta acceso. Dopo uno spostamento della cartella occorre registrare nuovamente il collegamento nativo.
+
+## Aggiornamento 0.3.7
+
+Gli audio originali restano in `data/<sessione>/remote.webm` e, se abilitato, `mic.webm`. La trascrizione avviene sul Mac. Il microfono dell’estensione registra anche quando Teams/Meet è in muto.
+
+Lo stop automatico interviene alla chiusura della scheda, navigando fuori da Meet/Teams oppure quando il comando per abbandonare la call, precedentemente rilevato, manca per almeno un minuto. Non dipende dal silenzio. Il controllo periodico può aggiungere fino a circa 30 secondi. Cambiamenti nell’interfaccia del provider possono richiedere lo stop manuale. Aggiorna l’estensione quando non stai registrando.
+
+Il riconoscimento conserva più audio attorno alle parole e tollera pause più lunghe, per ridurre tagli e ripetizioni. I nomi non vengono più scartati automaticamente in corrispondenza delle semplici pause.

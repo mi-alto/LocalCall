@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "LocalCall \u00b7 Trascrizioni private",
-  "version": "0.3.6",
-  "minimum_chrome_version": "116",
+  "version": "0.3.7",
+  "minimum_chrome_version": "120",
   "description": "Registra Meet e Teams e trascrive esclusivamente sul tuo Mac.",
   "permissions": [
     "activeTab",
@@ -10,7 +10,8 @@
     "offscreen",
     "storage",
     "scripting",
-    "nativeMessaging"
+    "nativeMessaging",
+    "alarms"
   ],
   "host_permissions": [
     "http://127.0.0.1:8765/*",

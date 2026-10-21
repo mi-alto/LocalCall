@@ -27,6 +27,12 @@ class FusionTests(unittest.TestCase):
         self.assertEqual(r[0]['start'],2.1)
         self.assertEqual(r[0]['speaker'],'Michele')
         self.assertIn('00:00:02,100 --> 00:00:02,500',export(r,'srt'))
+    def test_silence_boundary_does_not_erase_observed_speaker(self):
+        events=[{'t':0,'speakers':[]},{'t':1,'speakers':['A']},{'t':2,'speakers':[]}]
+        rows=fuse([{'text':' Ciao','offsets':{'from':1050,'to':1500}}],events)
+        self.assertEqual(rows[0]['speaker'],'A')
+        rows=fuse([{'text':' Ciao','offsets':{'from':2100,'to':2500}}],events)
+        self.assertEqual(rows[0]['speaker'],'Non identificato')
     def test_word_merge(self):
         r=fuse([{'text':' Ciao','offsets':{'from':0,'to':300}},{'text':' mondo','offsets':{'from':300,'to':800}}],[{'t':0,'speakers':['A']}])
         self.assertEqual(r[0]['text'],'Ciao mondo')

@@ -55,7 +55,10 @@ def constrain_to_speech(segments, intervals):
             i+=1
         if not candidates:
             continue
-        _,left,right=max(candidates)
+        # A boundary word can inherit the previous island's tail across a long
+        # removed silence. Its end belongs to the resumed speech, not that tail.
+        crosses_pause=any(candidates[j][1]-candidates[j-1][2]>1000 for j in range(1,len(candidates)))
+        _,left,right=candidates[-1] if crosses_pause else max(candidates)
         adjusted=left-start>250 or end-right>250
         result.append({**segment,'offsets':{'from':left,'to':right},'timing_adjusted':adjusted})
     return result
@@ -65,7 +68,8 @@ def fuse(segments, events, offset=0, self_name=None):
     events = sorted(events, key=lambda e: e['t'])
     times = [e['t'] for e in events]
     transitions = [events[i]['t'] for i in range(1,len(events))
-                   if set(events[i-1]['speakers']) != set(events[i]['speakers'])]
+                   if events[i-1]['speakers'] and events[i]['speakers']
+                   and set(events[i-1]['speakers']) != set(events[i]['speakers'])]
     for seg in segments:
         text = seg['text']
         if not text.strip() or text.strip().startswith('[_'):
