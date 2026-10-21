@@ -21,7 +21,7 @@ async function refresh(){
     const warnings=[...(s.warnings||[]),...(s.observerStale?['Nomi non aggiornati: torna nella scheda della call.']:[])];
     $('warning').textContent=warnings.length?'Avvisi'+(recording?' · la registrazione continua':'')+': '+warnings.join(' '):'';
     $('error').textContent=s.error||lastError;
-    $('micState').textContent=recording?(s.microphone==='active'?'Audio registrato: scheda + microfono. Il microfono registra anche quando sei in muto nella call.':'Audio registrato: solo la scheda. La tua voce dal microfono non viene registrata.') : '';
+    $('micState').textContent=recording?(s.microphone==='active'?(s.microphoneGate==='open'&&Date.now()<s.microphoneGateUntil?'Audio registrato: scheda + la tua voce.':s.microphoneGate==='muted'?'Sei in muto nella call: la tua voce non viene salvata.':'Stato del microfono della call non rilevato: la tua voce non viene salvata.'):'Audio registrato: solo la scheda. La tua voce dal microfono non viene registrata.') : '';
     $('microphoneSetup').hidden=recording&&s.microphone==='active';
     $('microphoneSetup').textContent=recording?'Abilita la mia voce per la prossima registrazione':'Configura la mia voce';
     $('people').textContent=recording?(s.speakers?.length?'Sta parlando: '+s.speakers.join(', '):'Nomi dei parlanti non rilevati: le parti senza attribuzione resteranno “Non identificato”.'):'';

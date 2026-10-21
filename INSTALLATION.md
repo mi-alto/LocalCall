@@ -53,7 +53,7 @@ The interface currently uses Italian:
 3. Allow access when prompted. A successful check automatically enables and saves microphone capture for the next recording; the check stream then stops.
 4. Enter your display name, select the language, and click **Salva e chiudi**.
 
-Microphone capture is off by default and independent of the meeting's mute button: if enabled, it records even when you are muted in Meet/Teams. Use headphones to reduce echo. Changes apply to the next recording, not one already running. Without microphone capture, your own voice may be absent.
+Microphone capture is off by default. When enabled, it saves your voice only while the meeting page confirms you are unmuted. Muted, unknown or stale states produce silence. Use headphones to reduce echo. Changes apply to the next recording, not one already running. Without microphone capture, your own voice may be absent.
 
 ## 5. Record and transcribe
 

@@ -101,3 +101,9 @@ La review Claude e le riproduzioni in reviews documentano la versione precedente
 Added lifecycle tests for prejoin, short control disappearance, recovery, a sustained meeting end, and DOM control presence even with hidden toolbars. A private 120-second local sample was compared with 500 ms VAD silence / 200 ms padding: the output was more coherent and had punctuation, but no human reference transcript was available, so no accuracy percentage is claimed. Source audio remains private and unchanged. Live provider call-end behavior still needs confirmation after reloading the extension.
 
 Validation: 41 Python tests passed including real local inference and long-pause timing; 11 JavaScript/browser tests passed with one optional native-toolbar test skipped. Additional recorded-tab closure/navigation regression test added and run separately.
+
+## 2026-10-21: meeting mute privacy (0.3.8)
+
+Browser microphone capture now uses a closed-by-default gain before the recording destination. Fresh explicit unmuted state is required, and permission expires on the audio clock after at most 1.25 seconds. Missing/ambiguous state and muted state produce silence. Out-of-order observations cannot reopen the gate. DOM mutation observation supplements 500 ms polling; toolbar pointer presses close it conservatively.
+
+Validated English/Italian action-label fixtures, the existing two-stream recorder/inference integration, and an actual oscillator signal through the gate: startup, muted, unknown, delayed, outside-call and expired permission are silent; fresh unmuted permission passes audio. Popup tests cover muted, open and expired states. Initial test harness failures (page CSP/global collisions and an obsolete popup expectation) were corrected; affected tests passed on rerun. Live Teams/Meet mute toggling is not yet verified; DOM/message latency remains, and prior recordings are not redacted.

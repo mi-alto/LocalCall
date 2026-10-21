@@ -6,7 +6,7 @@ Local meeting recording and transcription for Apple Silicon Macs, with a Chrome/
 
 ## Status
 
-Experimental, extension version 0.3.7. Transcription runs **after recording stops**, not live. The interface currently uses Italian; transcription supports Italian, English and automatic language detection.
+Experimental, extension version 0.3.8. Transcription runs **after recording stops**, not live. The interface currently uses Italian; transcription supports Italian, English and automatic language detection.
 
 The same extension targets Meet and Teams web in Chrome and Brave. Teams desktop, Safari and Firefox are not supported. Speaker names come from visible page elements and speaking indicators, not acoustic voice clustering. One Teams web layout has been inspected live, including speech/silence transitions (see TEST_REPORT.md); full attribution accuracy and other layouts remain unverified. Missing or ambiguous evidence is labeled “Non identificato” (unidentified).
 
@@ -34,7 +34,7 @@ Load the `extension` directory as an unpacked extension, then follow [INSTALLATI
 
 ## Recording and speaker attribution
 
-The extension records tab audio and, optionally, the microphone on a shared audio clock. Microphone capture is **off by default** and independent of Meet/Teams mute: if enabled, it records even while the meeting microphone is muted. Use headphones and notify participants before recording.
+The extension records tab audio and, optionally, the microphone on a shared audio clock. Microphone capture is **off by default**. When enabled, it saves your voice only while the meeting page confirms that you are unmuted; muted, unknown and stale states produce silence. Use headphones and notify participants before recording.
 
 Page observations are sampled every 500 ms and expire after 1.25 seconds. Whisper word timestamps are combined with these observations. Rapid speaker changes, overlap, hidden tiles, iframes, background tabs and provider layout updates can reduce attribution accuracy. The microphone track uses the configured local name; echo detection is only a heuristic. Confidence values are not calibrated probabilities.
 
@@ -84,6 +84,10 @@ Participant emails are captured only when explicitly exposed on the same meeting
 
 Version 0.3.7 stops capture when the meeting tab closes or navigates outside Meet/Teams. After detecting the in-call leave button, it also stops when that control has been absent for at least 60 seconds. A background alarm checks every 30 seconds, including when tab timers are throttled. Silence alone never stops recording. This DOM-based heuristic needs a recognized leave control; changed provider layouts may still require manual stop. Reload the extension after upgrading, outside an active recording.
 
-Original `remote.webm` (tab) and `mic.webm` (optional microphone) remain in `data/<session-id>/`. Enabled microphone capture is independent of the meeting mute button. Files are not uploaded to a transcription provider. Stop recordings before leaving the computer if automatic detection is unavailable.
+Original `remote.webm` (tab) and `mic.webm` (optional microphone) remain in `data/<session-id>/`. Enabled microphone capture follows the meeting mute state (version 0.3.8). Files are not uploaded to a transcription provider. Stop recordings before leaving the computer if automatic detection is unavailable.
 
 Speech detection now retains 200 ms around speech and waits 500 ms before splitting a pause, reducing clipped words and fragmented context. Speech-boundary changes no longer automatically erase an otherwise observed speaker; real speaker changes and missing coverage remain conservative. This does not guarantee correct transcription, especially for distant microphones, echo, jargon or background voices.
+
+### Meeting microphone privacy (0.3.8)
+
+The microphone stream passes through a closed-by-default audio gain before the recorder. Only a fresh, explicit unmuted observation from an active meeting opens it. Muted/ambiguous states close it; permission expires after at most 1.25 seconds on the audio clock even if page timers stop. DOM changes and microphone toolbar pointer presses trigger immediate observations, with a 500 ms polling fallback. A small detection/message delay remains: this is not sample-accurate synchronization with the provider. English and Italian microphone action labels are supported; unrecognized layouts/languages leave the local voice silent. The device may remain open to preserve the continuous recording timeline, but blocked samples are replaced with silence before encoding/upload to localhost. This applies to browser meetings, not standalone microphone notes. Existing recordings are not retroactively redacted.

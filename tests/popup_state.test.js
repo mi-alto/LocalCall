@@ -27,5 +27,14 @@ test('idle active service cannot be started twice; offline service can be activa
 test('unreachable service during recording never enables a conflicting activation',async()=>{
  const ui=await render({status:'recording',microphone:'active'},false);
  assert.equal(ui.activate.disabled,true);assert.match(ui.activate.textContent,/non raggiungibile/);
- assert.match(ui.micState.textContent,/scheda \+ microfono/);
+ assert.match(ui.micState.textContent,/non rilevato/);
+});
+
+test('popup distinguishes muted, permitted and expired microphone audio',async()=>{
+ const muted=await render({status:'recording',microphone:'active',microphoneGate:'muted'},true);
+ assert.match(muted.micState.textContent,/Sei in muto/);
+ const open=await render({status:'recording',microphone:'active',microphoneGate:'open',microphoneGateUntil:Date.now()+5000},true);
+ assert.match(open.micState.textContent,/scheda \+ la tua voce/);
+ const stale=await render({status:'recording',microphone:'active',microphoneGate:'open',microphoneGateUntil:Date.now()-1},true);
+ assert.match(stale.micState.textContent,/non viene salvata/);
 });

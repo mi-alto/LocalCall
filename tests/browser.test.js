@@ -32,6 +32,12 @@ test('Meet/Teams adapters: visible names, explicit speech, inactive widgets, mis
  assert.equal(await page.evaluate(()=>LocalCallAdapter.inMeeting()),true);
  await page.locator('button').evaluate(b=>b.remove());
  assert.equal(await page.evaluate(()=>LocalCallAdapter.inMeeting()),false);
+ for(const [label,expected] of [['Attiva microfono',true],['Disattiva microfono (⌘+D)',false],['Unmute microphone',true],['Mute microphone',false],['Microfono',null]]){
+   await page.evaluate(label=>{const b=document.createElement('button');b.id='microphone-button';b.setAttribute('aria-label',label);document.body.append(b);},label);
+   assert.equal(await page.evaluate(()=>LocalCallAdapter.microphoneMuted()),expected);
+   await page.locator('#microphone-button').evaluate(b=>b.remove());
+ }
+ assert.equal(await page.evaluate(()=>LocalCallAdapter.microphoneMuted()),null);
  let s=await page.evaluate(()=>LocalCallAdapter.snapshot(document,'meet.google.com'));
  assert.deepEqual(s,{participants:['Anna','Luca'],speakers:['Anna']});
  await page.locator('[aria-label]').evaluate(el=>el.remove());
@@ -125,7 +131,7 @@ test('Extension recorder: two streams, speaker events, stop flush, local final t
  const result=await page.evaluate(async(token)=>start({streamId:'synthetic-test-source',title:'Test estensione — Due tracce',config:{token,selfName:'Michele',language:'auto',microphone:true}}),token);
  assert.equal(result.status,'recording');
  // DOM timestamps are captured independently, as in an actual meeting tab.
- await page.evaluate(()=>{globalThis.testEvents=setInterval(()=>{chrome.runtime.sendMessage({target:'worker',type:'status'}).catch(()=>{});const e={t:context.currentTime-audioEpoch,participants:['Anna'],speakers:['Anna']};eventBuffer.push(e);},250);});
+ await page.evaluate(()=>{globalThis.testEvents=setInterval(()=>{chrome.runtime.sendMessage({target:'worker',type:'status'}).catch(()=>{});applyMeetingMicrophone({observedAt:now(),microphoneMuted:false,inMeeting:true});const e={t:context.currentTime-audioEpoch,participants:['Anna'],speakers:['Anna']};eventBuffer.push(e);},250);});
  await page.waitForTimeout(4500);
  await page.evaluate(()=>streams[1].getAudioTracks()[0].dispatchEvent(new Event('ended')));
  assert.equal(await page.evaluate(()=>state.status),'recording');
@@ -204,5 +210,39 @@ test('History: clean meeting titles, visible time and equal-height cards',async(
    await page.evaluate(t=>{document.title=t;},title);
    assert.equal(await page.evaluate(()=>LocalCallAdapter.meetingTitle()),expected);
   }
+ }finally{await browser.close();}
+});
+
+test('Microphone privacy gate: audio is silent when muted, unknown or stale',async()=>{
+ const browser=await chromium.launch(launch);
+ try{
+ const page=await browser.newPage();
+ await page.route(base+'/privacy-test.html',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Privacy gate test</title>'}));
+ await page.goto(base+'/privacy-test.html');
+ await page.evaluate(()=>{globalThis.chrome={runtime:{onMessage:{addListener(){}},sendMessage:async()=>({})}};});
+ await page.route(base+'/privacy-test.js',route=>route.fulfill({contentType:'application/javascript',body:readFileSync('extension/offscreen.js','utf8')}));
+ await page.addScriptTag({url:base+'/privacy-test.js'});
+ await page.evaluate(async()=>{
+   context=new AudioContext();micGate=context.createGain();micGate.gain.value=0;
+   const tone=context.createOscillator();tone.frequency.value=440;tone.connect(micGate);
+   globalThis.analyser=context.createAnalyser();micGate.connect(analyser);analyser.connect(context.destination);tone.start();await context.resume();
+   globalThis.energy=()=>{const a=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(a);return Math.sqrt(a.reduce((s,x)=>s+x*x,0)/a.length);};
+ });
+ const rms=async()=>{await page.waitForTimeout(120);return page.evaluate(()=>energy());};
+ assert.ok(await rms()<0.00001,'default closed');
+ await page.evaluate(()=>applyMeetingMicrophone({observedAt:now(),microphoneMuted:false,inMeeting:true}));
+ assert.ok(await rms()>.1,'confirmed unmuted audio passes');
+ await page.evaluate(()=>applyMeetingMicrophone({observedAt:now(),microphoneMuted:true,inMeeting:true}));
+ assert.ok(await rms()<0.00001,'mute removes audio');
+ await page.evaluate(()=>applyMeetingMicrophone({observedAt:now(),microphoneMuted:null,inMeeting:true}));
+ assert.ok(await rms()<0.00001,'unknown stays silent');
+ await page.evaluate(()=>applyMeetingMicrophone({observedAt:now()-2000,microphoneMuted:false,inMeeting:true}));
+ assert.ok(await rms()<0.00001,'delayed unmute is rejected');
+ await page.evaluate(()=>applyMeetingMicrophone({observedAt:now(),microphoneMuted:false,inMeeting:false}));
+ assert.ok(await rms()<0.00001,'outside call stays silent');
+ await page.evaluate(()=>applyMeetingMicrophone({observedAt:now(),microphoneMuted:false,inMeeting:true}));
+ assert.ok(await rms()>.1);
+ await page.waitForTimeout(1400);
+ assert.ok(await rms()<0.00001,'audio clock expires permission without another observation');
  }finally{await browser.close();}
 });

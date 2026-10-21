@@ -25,7 +25,7 @@ Pacchetto pronto: [LocalCall-browser-0.2.0.zip](dist/LocalCall-browser-0.2.0.zip
 
 Richiede Chrome 116+ o una versione Brave compatibile con `tabCapture` e documenti offscreen. Chrome è stato collaudato automaticamente con un profilo isolato; Anche Brave è stato collaudato con audio sintetico. La cattura completa dalla barra di Chrome è stata verificata su una pagina Meet simulata; una call reale non è ancora stata collaudata. Su macOS può essere necessario concedere al browser l’accesso al microfono nelle Impostazioni di Sistema.
 
-Usa cuffie per ridurre l’eco. Il microfono dell’estensione è **indipendente dal tasto muto della call**: registra la voce locale anche quando Meet/Teams è in muto. Disattiva la relativa opzione se non lo desideri. Avvisa i partecipanti prima della registrazione.
+Usa cuffie per ridurre l’eco. Il microfono dell’estensione segue il muto della call: la tua voce viene salvata solo quando la pagina conferma il microfono acceso. Avvisa i partecipanti prima della registrazione.
 
 ## Modelli e hardware
 
@@ -81,8 +81,12 @@ Il codice di LocalCall è distribuito sotto [GNU GPL versione 3](LICENSE), esclu
 
 ## Aggiornamento 0.3.7
 
-Gli audio originali restano in `data/<sessione>/remote.webm` e, se abilitato, `mic.webm`. La trascrizione avviene sul Mac. Il microfono dell’estensione registra anche quando Teams/Meet è in muto.
+Gli audio originali restano in `data/<sessione>/remote.webm` e, se abilitato, `mic.webm`. La trascrizione avviene sul Mac. La tua traccia salva silenzio quando Teams/Meet è in muto o lo stato non è leggibile.
 
 Lo stop automatico interviene alla chiusura della scheda, navigando fuori da Meet/Teams oppure quando il comando per abbandonare la call, precedentemente rilevato, manca per almeno un minuto. Non dipende dal silenzio. Il controllo periodico può aggiungere fino a circa 30 secondi. Cambiamenti nell’interfaccia del provider possono richiedere lo stop manuale. Aggiorna l’estensione quando non stai registrando.
 
 Il riconoscimento conserva più audio attorno alle parole e tollera pause più lunghe, per ridurre tagli e ripetizioni. I nomi non vengono più scartati automaticamente in corrispondenza delle semplici pause.
+
+## Microfono e muto — 0.3.8
+
+Nelle call del browser la tua traccia salva silenzio quando sei in muto, lo stato non è leggibile o gli aggiornamenti scadono (massimo 1,25 secondi). L’audio degli altri prosegue. I cambiamenti dei controlli vengono rilevati anche tra i controlli periodici di 500 ms; rimane un piccolo ritardo di rilevamento e comunicazione. Il dispositivo può restare aperto, ma il segnale viene azzerato prima del salvataggio. Sono supportate le etichette italiane e inglesi; in caso di dubbio la tua voce resta esclusa. Le note vocali registrate direttamente dall’app non seguono Teams/Meet. Le registrazioni precedenti non vengono modificate.

@@ -28,7 +28,7 @@ L’estensione non è pubblicata sul Chrome Web Store. È normale che il browser
 4. Per includere la tua voce, apri **Configura la mia voce**, scegli il dispositivo e premi **Abilita e verifica il microfono**. Concedi il permesso: l’attivazione si salva automaticamente. Vale dalla prossima registrazione. Il microfono è disattivato inizialmente.
 5. Nome e lingua si salvano con **Salva e chiudi**. Il codice manuale, se necessario, si trova in **Collegamento manuale · avanzate** → **Verifica e salva codice**.
 
-Il microfono del plugin è indipendente dal muto di Meet/Teams: se lo abiliti registra anche quando nella call sei in muto. Usa cuffie per evitare di registrare due volte la voce degli altri. Se non abiliti il microfono, viene registrato solo l’audio degli altri partecipanti riprodotto dalla scheda.
+Il microfono del plugin segue il muto di Meet/Teams: salva la tua voce solo quando la pagina conferma il microfono acceso. In muto o con stato non leggibile salva silenzio. Usa cuffie per evitare di registrare due volte la voce degli altri. Se non abiliti il microfono, viene registrato solo l’audio degli altri partecipanti riprodotto dalla scheda.
 
 ## 4. Registra
 

@@ -1,7 +1,7 @@
 const BASE='http://127.0.0.1:8765';
 let state={status:'idle'}, config, session, epoch, audioEpoch=0, recorders=[], streams=[], context;
 let queue=Promise.resolve(), eventQueue=Promise.resolve(), pendingBytes=0, eventBuffer=[], eventTimer, fault=null;
-let eventBusy=false, lastObservation=0, micSource, micDestination, micLive=false, reconnecting=false;
+let eventBusy=false, lastObservation=0, micSource, micDestination, micLive=false, reconnecting=false, micGate, lastMicObservedAt=0;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const now=()=>performance.timeOrigin+performance.now();
 function notify(){chrome.runtime.sendMessage({target:'worker',type:'recorder-state',state}).catch(()=>{});}
@@ -33,6 +33,21 @@ function flushEvents() {
     .finally(()=>{eventBusy=false;});
   return eventQueue;
 }
+function applyMeetingMicrophone(event={}) {
+  if(!micGate||!context)return;
+  if(Number.isFinite(event.observedAt)&&event.observedAt<lastMicObservedAt)return;
+  if(Number.isFinite(event.observedAt)&&event.observedAt<=now())lastMicObservedAt=event.observedAt;
+  const age=now()-event.observedAt;
+  const fresh=Number.isFinite(age)&&age>=0&&age<1250;
+  const allowed=fresh&&event.microphoneMuted===false&&event.inMeeting===true;
+  const t=context.currentTime;
+  micGate.gain.cancelScheduledValues(t);
+  micGate.gain.setValueAtTime(allowed?1:0,t);
+  // Expire on the audio clock, even if JavaScript timers are suspended.
+  if(allowed)micGate.gain.setValueAtTime(0,t+(1250-age)/1000);
+  state.microphoneGate=allowed?'open':fresh&&event.microphoneMuted===true?'muted':'unknown';
+  state.microphoneGateUntil=allowed?event.observedAt+1250:0;
+}
 async function attachMicrophone() {
   if(reconnecting)return;
   reconnecting=true;
@@ -44,7 +59,7 @@ async function attachMicrophone() {
     streams.push(mic);
     micSource?.disconnect();
     micSource=context.createMediaStreamSource(mic);
-    micSource.connect(micDestination);
+    micSource.connect(micGate);
     micLive=true;state.microphone='active';state.microphoneError='';notify();
     mic.getAudioTracks().forEach(track=>track.addEventListener('ended',()=>{
       micSource?.disconnect();micLive=false;state.microphone='disconnected';
@@ -59,7 +74,7 @@ navigator.mediaDevices.addEventListener('devicechange',()=>{
 async function start(m) {
   if(['recording','starting','stopping'].includes(state.status))throw Error('Registrazione già attiva');
   state={status:'starting',warnings:[]};config=m.config;session=null;fault=null;
-  queue=Promise.resolve();eventQueue=Promise.resolve();eventBusy=false;pendingBytes=0;eventBuffer=[];recorders=[];streams=[];micLive=false;lastObservation=0;
+  queue=Promise.resolve();eventQueue=Promise.resolve();eventBusy=false;pendingBytes=0;eventBuffer=[];recorders=[];streams=[];micLive=false;lastObservation=0;lastMicObservedAt=0;
   notify();
   try{
     const remote=await navigator.mediaDevices.getUserMedia({audio:{mandatory:{chromeMediaSource:'tab',chromeMediaSourceId:m.streamId}},video:false});
@@ -70,6 +85,8 @@ async function start(m) {
     remoteSource.connect(context.destination); // Preserve meeting playback after tab capture.
     remoteSource.connect(remoteDestination);
     micDestination=context.createMediaStreamDestination();
+    micGate=context.createGain();micGate.gain.value=0;micGate.connect(micDestination);
+    state.microphoneGate="unknown";state.microphoneGateUntil=0;
     // A continuous silent source keeps both recorded timelines on the same media clock.
     const silence=context.createConstantSource();silence.offset.value=0;
     silence.connect(remoteDestination);silence.connect(micDestination);silence.start();
@@ -130,6 +147,7 @@ chrome.runtime.onMessage.addListener((m,sender,reply)=>{
   if(m.type==='observation'){
     if(state.status==='recording'){
       const e=m.event||{};
+      applyMeetingMicrophone(e);
       const valid=Array.isArray(e.speakers)&&Array.isArray(e.participants);
       const delayed=typeof e.observedAt!=='number'||now()-e.observedAt>1250||now()<e.observedAt;
       if(valid){

@@ -67,5 +67,17 @@ function meetingTitle(raw) {
     // Presence, not CSS visibility: toolbars can hide while presenting.
     return !!document.querySelector('#hangup-button, [data-tid="call-hangup"], [data-tid="hangup-button"], button[aria-label="Leave call"], button[aria-label="Leave meeting"], button[aria-label="Abbandona la chiamata"], button[aria-label="Abbandona la riunione"], button[aria-label="Esci dalla chiamata"]');
   }
-  globalThis.LocalCallAdapter = {inMeeting, snapshot, meetingTitle:()=>meetingTitle(document.title)};
+  function microphoneMuted() {
+    const controls=[...document.querySelectorAll('#microphone-button, button[aria-label], [role="button"][aria-label]')];
+    const states=[];
+    for(const el of controls){
+      if(el.closest('[data-participant-id], [data-cid="calling-participant-stream"]'))continue;
+      const label=(el.getAttribute('aria-label')||'').trim().toLowerCase();
+      // Action labels describe what clicking WILL do, not the current state.
+      if(/^(unmute(?: microphone)?|turn on microphone|attiva(?: il)? microfono|riattiva(?: il)? microfono)(?:$|\s*[(（])/i.test(label))states.push(true);
+      else if(/^(mute(?: microphone)?|turn off microphone|disattiva(?: il)? microfono)(?:$|\s*[(（])/i.test(label))states.push(false);
+    }
+    return states.length&&states.every(s=>s===states[0])?states[0]:null;
+  }
+  globalThis.LocalCallAdapter = {microphoneMuted, inMeeting, snapshot, meetingTitle:()=>meetingTitle(document.title)};
 })();
