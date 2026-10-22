@@ -10,7 +10,7 @@ import math
 DERIVED = {'speaker_check','speaker_proposal','context_inferred','voice_recovered',
            'voice_similarity','voice_model','acoustic_coverage','speaker_clusters',
            'name_support','diarization_method','original_attribution',
-           'context_method','context_bounds','boundary_refinement','short_refinement','channel_evidence','channel_inferred','attribution_method'}
+           'context_method','context_bounds','boundary_refinement','short_refinement','profile_recovery','channel_evidence','channel_inferred','attribution_method'}
 
 
 def protected(row):

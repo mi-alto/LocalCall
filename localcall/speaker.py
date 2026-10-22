@@ -108,6 +108,33 @@ def recover(root, wav, words, anchors, events, offset, speech_intervals=None, se
         return words, 'Confronto vocale non disponibile; mantenute le attribuzioni della pagina.'
 
 
+def recover_profiles(root, wav, mic_wav, rows, events, offset, mic_offset,
+                     remote_intervals, mic_intervals, meta):
+    from .channel_attribution import two_person_context, observations_complete
+    from .paired_profiles import validate
+    context=two_person_context(events,True,meta.get('self_name'),meta.get('confirmed_participant_count')==2)
+    if (context is None or not observations_complete(meta) or mic_intervals is None or
+            not remote_intervals or not wav.exists() or not mic_wav.exists() or
+            not any(r.get('source')=='acoustic_unknown' for r in rows)):
+        return rows,None
+    payload=dict(mode='profiles',wav=str(wav),mic_wav=str(mic_wav),words=rows,anchors=[],
+                 events=[{'t':e['t'],'speakers':e['speakers']} for e in events],offset=offset,
+                 mic_offset=mic_offset,speech_intervals=remote_intervals,mic_intervals=mic_intervals,
+                 single_remote=context[0])
+    try:
+        command=[str(root/'.speaker-env/bin/python'),'-I',str(root/'localcall/speaker.py')]
+        if sys.platform=='darwin':command=['/usr/bin/sandbox-exec','-p','(version 1)(allow default)(deny network*)']+command
+        run=subprocess.run(command,input=json.dumps(payload),text=True,capture_output=True,timeout=3600)
+        wav.with_suffix('.profiles.log').write_text(run.stderr or '')
+        if run.returncode:raise ValueError('Profile worker failed')
+        result=json.loads(run.stdout)
+        if not isinstance(result,list) or len(result)!=len(rows):raise ValueError('Invalid output length')
+        for before,after in zip(rows,result):validate(before,after,context[0])
+        return result,None
+    except (OSError,ValueError,TypeError,KeyError,AttributeError,subprocess.SubprocessError):
+        return rows,'Confronto dei due profili non disponibile; mantenute le attribuzioni precedenti.'
+
+
 AMBIGUOUS = ('missing', 'transition', 'overlap')
 
 
@@ -258,7 +285,7 @@ def main():
     spec=importlib.util.spec_from_file_location('speaker_audit',root/'localcall/speaker_audit.py')
     audit_module=importlib.util.module_from_spec(spec);spec.loader.exec_module(audit_module)
     refs = reference_spans(task['anchors'])
-    if task.get('mode')!='session' and not audit_module.can_audit(task['words'],task['anchors']) and sum(len({span[2] for span in spans}) >= 2 for spans in refs.values()) < 2:
+    if task.get('mode') not in ('session','profiles') and not audit_module.can_audit(task['words'],task['anchors']) and sum(len({span[2] for span in spans}) >= 2 for spans in refs.values()) < 2:
         return task['words']
     import threading
     import time
@@ -299,6 +326,30 @@ def main():
                 v = encoder.encode_batch(torch.from_numpy(y).unsqueeze(0)).numpy().reshape(-1)
             norm = np.linalg.norm(v)
             return v/norm if norm > 0 else None
+        if task.get('mode')=='profiles':
+            spec=importlib.util.spec_from_file_location('session_diarization',root/'localcall/session_diarization.py')
+            module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+            spec=importlib.util.spec_from_file_location('paired_profiles',root/'localcall/paired_profiles.py')
+            profiles=importlib.util.module_from_spec(spec);spec.loader.exec_module(profiles)
+            windows=[];vectors=[]
+            for a,b in module.speech_windows([dict(start=a,end=b) for a,b in task['speech_intervals']]):
+                a,b=max(a,offset),min(b,offset+duration)
+                if b-a<1.5:continue
+                v=embedding(a,b)
+                if v is not None:windows.append((a,b));vectors.append(v)
+            if not vectors:return task['words']
+            with sf.SoundFile(task['mic_wav']) as mic:
+                if mic.samplerate!=16000 or mic.channels!=1:raise ValueError('Invalid microphone format')
+                def mic_embedding(a,b):
+                    bounds=audio_bounds(a,b,task['mic_offset'],len(mic)/16000)
+                    if bounds is None:return None
+                    a,b=bounds;mic.seek(round(a*16000));y=mic.read(round(b*16000)-round(a*16000),dtype='float32')
+                    if len(y)<24000 or np.sqrt(np.mean(y*y))<.001:return None
+                    with torch.inference_mode():v=encoder.encode_batch(torch.from_numpy(y).unsqueeze(0)).numpy().reshape(-1)
+                    norm=np.linalg.norm(v)
+                    return v/norm if norm>0 else None
+                return profiles.recover(task['words'],windows,vectors,task['mic_intervals'],
+                    task['speech_intervals'],task['events'],mic_embedding,task['single_remote'],module)
         if task.get('mode')=='session':
             spec=importlib.util.spec_from_file_location('session_diarization',root/'localcall/session_diarization.py')
             module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)

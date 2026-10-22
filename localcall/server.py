@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
 from .diarize import fuse, export, constrain_to_speech
-from .speaker import recover, group_turns, possible_echo
+from .speaker import recover, recover_profiles, group_turns, possible_echo
 from .channel_attribution import attribute_single_remote, observations_complete
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -121,6 +121,7 @@ def process(folder):
         rows = []
         remote_for_echo = []
         mic_intervals = None
+        remote_intervals = None
         events = events_from(folder/'events.jsonl')
         warnings = list(meta.get('client_warnings',[]))
         completed = 0
@@ -147,6 +148,7 @@ def process(folder):
                 anchors = fuse(segments, events, info['offset'], meta['self_name'] if track == 'mic' else None)
                 track_rows = anchors
                 if track == 'remote':
+                    remote_intervals=[(a/1000+info['offset'],b/1000+info['offset']) for a,b in intervals]
                     words = fuse(segments, events, info['offset'], merge=False)
                     remote_for_echo.extend(words)
                     clean_anchors = fuse([s for s in segments if not s.get('timing_adjusted')], events, info['offset'])
@@ -160,7 +162,6 @@ def process(folder):
                 for row in track_rows:
                     row['track'] = track
                 rows.extend(track_rows)
-                wav.unlink(missing_ok=True)
                 completed += 1
             except (OSError, ValueError, subprocess.SubprocessError) as exc:
                 warnings.append(f'Traccia {track} non elaborata: {exc}')
@@ -180,6 +181,12 @@ def process(folder):
             rows=[r for r in rows if r.get('track')!='remote']+attributed
         except (ValueError,TypeError,KeyError):
             warnings.append('Attribuzione dal canale non disponibile; mantenuto il confronto vocale.')
+        remote=[r for r in rows if r.get('track')=='remote']
+        if meta['tracks'].get('mic',{}).get('size') and meta['tracks'].get('remote',{}).get('size'):
+            recovered,warning=recover_profiles(ROOT,folder/'remote.wav',folder/'mic.wav',remote,events,
+                meta['tracks']['remote']['offset'],meta['tracks']['mic']['offset'],remote_intervals,mic_intervals,meta)
+            rows=[r for r in rows if r.get('track')!='remote']+recovered
+            if warning:warnings.append(warning)
         rows.sort(key=lambda r: (r['start'], r['end']))
         rows = group_turns(rows)
         save(folder/'transcript.json', rows)
@@ -194,6 +201,9 @@ def process(folder):
             meta = read(folder/'session.json')
             meta.update(status='error', error=str(exc))
             save(folder/'session.json', meta)
+
+    finally:
+        for track in ('mic','remote'):(folder/f'{track}.wav').unlink(missing_ok=True)
 
 class App(ThreadingHTTPServer):
     daemon_threads = True
