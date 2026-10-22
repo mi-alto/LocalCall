@@ -102,7 +102,7 @@ def timestamp(seconds, comma=False):
 
 def export(rows, kind):
     def display_name(row):
-        return row['speaker'] + (' (continuità stimata)' if row.get('context_inferred') else '')
+        return row['speaker'] + (' (canale remoto)' if row.get('channel_inferred') else '') + (' (continuità stimata)' if row.get('context_inferred') else '')
     if kind == 'txt':
         return '\n\n'.join(f'[{timestamp(r["start"])}] {display_name(r)}: {r["text"]}' for r in rows)
     # Display paragraphs may last a minute; SRT keeps the detailed short cues.
@@ -120,6 +120,7 @@ def export(rows, kind):
                 and row['end']-cues[-1]['start'] <= 20):
             cues[-1]['text'] += ' '+row['text']
             cues[-1]['end'] = row['end']
+            cues[-1]['channel_inferred'] = bool(cues[-1].get('channel_inferred') or row.get('channel_inferred'))
             cues[-1]['context_inferred'] = bool(cues[-1].get('context_inferred') or row.get('context_inferred'))
         else:
             cues.append(row)

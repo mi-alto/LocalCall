@@ -20,6 +20,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
 from .diarize import fuse, export, constrain_to_speech
 from .speaker import recover, group_turns, possible_echo
+from .channel_attribution import attribute_single_remote, observations_complete
 
 ROOT = Path(__file__).resolve().parent.parent
 MODEL = ROOT / 'models/ggml-large-v3-turbo-q5_0.bin'
@@ -119,6 +120,7 @@ def process(folder):
             raise RuntimeError('Modello assente. Esegui scripts/setup.py.')
         rows = []
         remote_for_echo = []
+        mic_intervals = None
         events = events_from(folder/'events.jsonl')
         warnings = list(meta.get('client_warnings',[]))
         completed = 0
@@ -140,6 +142,8 @@ def process(folder):
                 if result['transcription'] and not intervals:
                     warnings.append('Confini VAD non disponibili: verifica i tempi della traccia '+track)
                 segments=constrain_to_speech(result['transcription'],intervals)
+                if track=='mic':
+                    mic_intervals=[(a/1000+info['offset'],b/1000+info['offset']) for a,b in intervals] if intervals or not segments else None
                 anchors = fuse(segments, events, info['offset'], meta['self_name'] if track == 'mic' else None)
                 track_rows = anchors
                 if track == 'remote':
@@ -147,7 +151,9 @@ def process(folder):
                     remote_for_echo.extend(words)
                     clean_anchors = fuse([s for s in segments if not s.get('timing_adjusted')], events, info['offset'])
                     track_rows, warning = recover(ROOT, wav, words, clean_anchors, events, info['offset'],
-                        [(a/1000+info['offset'],b/1000+info['offset']) for a,b in intervals] if intervals else None)
+                        [(a/1000+info['offset'],b/1000+info['offset']) for a,b in intervals] if intervals else None,
+                        separate_microphone=bool(meta['tracks'].get('mic',{}).get('size')) and observations_complete(meta),self_name=meta.get('self_name'),
+                        confirmed_two_person=meta.get('confirmed_participant_count')==2,audio_source='remote')
                     if warning:
                         track_rows = anchors
                         warnings.append(warning)
@@ -166,6 +172,14 @@ def process(folder):
                 continue
             if possible_echo(row, remote_for_echo):
                 row.update(speaker='Non identificato (possibile eco)', source='possible_echo', confidence=0)
+        remote=[r for r in rows if r.get('track')=='remote']
+        try:
+            attributed=attribute_single_remote(remote,events,bool(meta['tracks'].get('mic',{}).get('size')) and observations_complete(meta),
+                self_name=meta.get('self_name'),confirmed_two_person=meta.get('confirmed_participant_count')==2,
+                mic_intervals=mic_intervals,audio_source='remote')
+            rows=[r for r in rows if r.get('track')!='remote']+attributed
+        except (ValueError,TypeError,KeyError):
+            warnings.append('Attribuzione dal canale non disponibile; mantenuto il confronto vocale.')
         rows.sort(key=lambda r: (r['start'], r['end']))
         rows = group_turns(rows)
         save(folder/'transcript.json', rows)
@@ -391,6 +405,9 @@ class Handler(BaseHTTPRequestHandler):
                     raise Problem(409, 'Nessun audio salvato')
                 finish_body = self.json_body()
                 meta['client_warnings'] = [str(w)[:300] for w in finish_body.get('warnings',[])][:20]
+                gaps=finish_body.get('event_gaps',0)
+                if not isinstance(gaps,int) or gaps<0:raise Problem(400,'Conteggio eventi persi non valido')
+                meta['event_gaps']=max(meta.get('event_gaps',0),gaps)
                 meta['status'] = 'queued'
                 save(folder/'session.json', meta)
                 POOL.submit(process, folder)
@@ -428,7 +445,9 @@ class Handler(BaseHTTPRequestHandler):
                     names = list(dict.fromkeys(str(n)[:100] for n in e['speakers']))
                     # Too many simultaneous speakers is ambiguous: never pick the first 30.
                     clean_participants=[str(n)[:100] for n in participants][:100]
-                    valid.append(dict(t=e['t'], speakers=names if len(names)<=30 else [], participants=clean_participants, contacts=valid_contacts(e.get('contacts', []), clean_participants)))
+                    local_name=e.get('self_name')
+                    local_name=local_name if isinstance(local_name,str) and local_name in clean_participants and local_name not in names else None
+                    valid.append(dict(**({'self_name':local_name} if local_name else {}),t=e['t'], speakers=names if len(names)<=30 else [], participants=clean_participants, contacts=valid_contacts(e.get('contacts', []), clean_participants)))
                 with (folder/'events.jsonl').open('a') as f:
                     for e in valid:
                         f.write(json.dumps(e, ensure_ascii=False)+'\n')

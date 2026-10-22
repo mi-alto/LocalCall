@@ -137,3 +137,35 @@ class SessionDiarizationTests(unittest.TestCase):
         self.assertEqual(out[1]['speaker'],'A');self.assertEqual(out[-2]['speaker'],'B')
         self.assertEqual(out[3]['speaker'],'Non identificato')
         self.assertEqual([r.get('text') for r in out],[r.get('text') for r in rows])
+
+    def test_short_remote_requires_three_acoustic_scales_and_verified_name(self):
+        try:import numpy as np
+        except ImportError:self.skipTest('Requires acoustic environment')
+        from localcall.session_diarization import refine_short_single_remote
+        row=dict(start=10,end=12,speaker='Non identificato',source='acoustic_unknown',text='same',confidence=0)
+        c={1:np.array([1.,0.]),2:np.array([0.,1.])};m={1:'A'};e={1:{'support':4}}
+        calls=[]
+        def good(a,b):calls.append((a,b));return np.array([1.,0.])
+        result,n=refine_short_single_remote([row],c,m,e,good,(0,30),'A')
+        self.assertEqual(result[0]['speaker'],'A');self.assertEqual(result[0]['text'],'same')
+        self.assertEqual(n,3);self.assertEqual(len(set(calls)),3)
+        self.assertEqual(refine_short_single_remote([row],c,m,e,good,(0,30),None)[0],[row])
+        def conflict(a,b):return np.array([1.,0.]) if b-a<4 else np.array([0.,1.])
+        self.assertEqual(refine_short_single_remote([row],c,m,e,conflict,(0,30),'A')[0],[row])
+
+    def test_short_remote_does_not_relabel_known_words_or_exceed_budget(self):
+        try:import numpy as np
+        except ImportError:self.skipTest('Requires acoustic environment')
+        from localcall.session_diarization import refine_short_single_remote
+        rows=[dict(start=10,end=11,speaker='A',source='voice'),dict(start=12,end=14,speaker='Non identificato',source='acoustic_unknown')]
+        c={1:np.array([1.,0.])};m={1:'A'};e={1:{'support':4}}
+        result,n=refine_short_single_remote(rows,c,m,e,lambda a,b:np.array([1.,0.]),(0,30),'A',max_queries=2)
+        self.assertEqual(result,rows);self.assertEqual(n,0)
+
+    def test_short_remote_cannot_borrow_neighbor_voice_for_tiny_gap(self):
+        import numpy as np
+        from localcall.session_diarization import refine_short_single_remote
+        row=dict(start=10,end=11,speaker='Non identificato',source='acoustic_unknown')
+        def embed(a,b):raise AssertionError('Too little target audio')
+        result,n=refine_short_single_remote([row],{1:np.array([1.,0.])},{1:'A'},{1:{'support':4}},embed,(0,30),'A')
+        self.assertEqual(result,[row]);self.assertEqual(n,0)

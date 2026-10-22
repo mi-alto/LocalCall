@@ -44,6 +44,9 @@ test('Meet/Teams adapters: visible names, explicit speech, inactive widgets, mis
  assert.deepEqual(await page.evaluate(()=>LocalCallAdapter.snapshot(document,'meet.google.com').speakers),[]);
  await page.setContent('<div data-participant-id="x"><span class="zWGUib">Anna</span><i class="IisKdb" style="display:block">●</i></div>');
  assert.deepEqual(await page.evaluate(()=>LocalCallAdapter.snapshot(document,'meet.google.com').speakers),['Anna']);
+ await page.setContent('<div data-participant-id="self"><span data-self-name="You">You</span></div><div data-participant-id="remote" data-is-speaking="true"><span data-self-name="You">Anna</span></div>');
+ s=await page.evaluate(()=>LocalCallAdapter.snapshot(document,'meet.google.com'));
+ assert.deepEqual(s.participants,['You','Anna']);assert.deepEqual(s.speakers,['Anna']);assert.equal(s.self_name,'You');
  await page.setContent('<div data-tid="participant-tile" data-is-speaking="true"><span data-tid="participant-name">Michele</span></div>');
  s=await page.evaluate(()=>LocalCallAdapter.snapshot(document,'teams.microsoft.com'));
  assert.deepEqual(s.speakers,['Michele']);
@@ -59,12 +62,14 @@ test('Meet/Teams adapters: visible names, explicit speech, inactive widgets, mis
  await page.setContent(`<div data-tid="myself-video"><div data-tid="participant-info-nametag"><span data-person-mri="self">Alex</span></div><div data-is-speaking="true">●</div></div>
  <div data-cid="calling-participant-stream" role="menuitem"><div data-tid="participant-speaker" aria-hidden="true">Avatar</div><div data-tid="participant-info-nametag"><span data-person-mri="remote">Alex</span><span>Guest</span></div><div class="vdi-frame-occlusion" data-tid="voice-level-stream-outline" data-is-speaking="true">●</div></div>`);
  assert.deepEqual(await page.evaluate(()=>LocalCallAdapter.snapshot(document,'teams.microsoft.com').speakers),['Alex']);
+ assert.equal(await page.evaluate(()=>LocalCallAdapter.snapshot(document,'teams.microsoft.com').self_name),'Alex');
  await page.locator('[data-tid="voice-level-stream-outline"]').evaluate(el=>el.setAttribute('data-is-speaking','false'));
  assert.deepEqual(await page.evaluate(()=>LocalCallAdapter.snapshot(document,'teams.microsoft.com').speakers),[]);
  await page.locator('[data-tid="voice-level-stream-outline"]').evaluate(el=>el.removeAttribute('data-is-speaking'));
  assert.deepEqual(await page.evaluate(()=>LocalCallAdapter.snapshot(document,'teams.microsoft.com').speakers),[]);
 
  await page.setContent('<div data-participant-id="local" data-is-speaking="true"><span data-self-name="Io">Io</span></div><div data-participant-id="remote"><span class="zWGUib">Anna</span><div class="IisKdb" style="opacity:0">●</div></div>');
+ assert.equal(await page.evaluate(()=>LocalCallAdapter.snapshot(document,'meet.google.com').self_name),'Io');
  assert.deepEqual(await page.evaluate(()=>LocalCallAdapter.snapshot(document,'meet.google.com').speakers),[]);
  }finally{await browser.close();}
 });
@@ -147,9 +152,15 @@ test('Extension recorder: two streams, speaker events, stop flush, local final t
   await new Promise(r=>setTimeout(r,1000));
  }
  assert.equal(session.status,'done',session.error);
- assert.ok(session.transcript.some(r=>r.speaker==='Anna'));
+ // This nine-second fixture cannot meet the acoustic 20-second name-support span.
+ // Verify captured DOM evidence independently of conservative acoustic abstention.
+ const leaves=rows=>rows.flatMap(r=>r.parts?leaves(r.parts):[r]);
+ const detailed=await (await fetch(`${base}/api/sessions/${result.sessionId}/export.json`,{headers})).json();
+ const remote=leaves(detailed).filter(r=>r.track==='remote');
+ assert.ok(remote.some(r=>(r.original_attribution?.speaker||r.speaker)==='Anna'));
  assert.ok(session.transcript.some(r=>r.speaker==='Michele'&&/project/i.test(r.text)));
- assert.ok(session.transcript.some(r=>r.speaker==='Anna'&&/progetto/i.test(r.text)));
+ assert.ok(remote.some(r=>/progetto/i.test(r.text)));
+ assert.ok(remote.every(r=>['Anna','Non identificato'].includes(r.speaker)));
  assert.ok(droppedAck);assert.ok(metadataFailed);
  assert.ok(session.warnings.some(w=>w.includes('Microfono scollegato')));
  assert.ok(session.warnings.some(w=>w.includes('nomi')));
@@ -256,14 +267,16 @@ test('Speaker audit: suggestions and uncertainty keep the original name visible'
   await page.route(base+'/api/sessions/audit',route=>route.fulfill({json:{...session,transcript:[
    {start:0,end:3,speaker:'Anna',source:'dom',text:'Testo invariato',speaker_proposal:{speaker:'Luca',status:'needs_review'}},
    {start:4,end:7,speaker:'Anna',source:'dom',text:'Altro testo',speaker_check:{status:'uncertain'}},
-   {start:8,end:12,speaker:'Anna',source:'dom',text:'Frase ricomposta',context_inferred:true}
+   {start:8,end:12,speaker:'Anna',source:'dom',text:'Frase ricomposta',context_inferred:true},
+   {start:13,end:15,speaker:'Anna',source:'channel',text:'Canale separato',channel_inferred:true}
   ]}}));
   await page.goto(base+'/#'+token);
-  await page.waitForFunction(()=>document.querySelectorAll('.utterance').length===3);
+  await page.waitForFunction(()=>document.querySelectorAll('.utterance').length===4);
   const names=await page.locator('.utterance strong').allTextContents();
   assert.match(names[0],/Anna.*Luca.*da verificare/);
   assert.match(names[1],/Anna.*voce non confermata/);
   assert.match(names[2],/Anna.*continuità stimata/);
+  assert.match(names[3],/Anna.*canale remoto/);
   assert.equal(await page.locator('.utterance p').first().textContent(),'Testo invariato');
  }finally{await browser.close();}
 });

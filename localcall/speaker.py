@@ -42,10 +42,10 @@ def group_turns(rows):
         row = dict(original)
         row['voice_recovered'] = bool(row.get('voice_recovered') or row['source']=='voice')
         row['context_inferred'] = bool(row.get('context_inferred') or row['source']=='context')
-        known = row['source'] in ('dom', 'voice', 'microphone', 'context', 'manual')
+        known = row['source'] in ('dom', 'voice', 'microphone', 'context', 'manual', 'channel')
         same_unknown = bool(result and row['source'] in ('missing','transition','overlap','acoustic_unknown')
                             and result[-1]['source'] in (*AMBIGUOUS,'acoustic_unknown'))
-        if (result and ((known and result[-1]['source'] in ('dom', 'voice', 'microphone', 'context', 'manual')) or same_unknown)
+        if (result and ((known and result[-1]['source'] in ('dom', 'voice', 'microphone', 'context', 'manual', 'channel')) or same_unknown)
                 and result[-1]['speaker'] == row['speaker']
                 and result[-1].get('track') == row.get('track')
                 and result[-1].get('speaker_proposal',{}).get('speaker') == row.get('speaker_proposal',{}).get('speaker')
@@ -59,6 +59,7 @@ def group_turns(rows):
             prev['text'] = prev['text'].rstrip()+' '+row['text'].lstrip()
             prev['end'] = max(prev['end'], row['end'])
             prev['confidence'] = min(prev.get('confidence', 0), row.get('confidence', 0))
+            prev['channel_inferred'] = any(part.get('channel_inferred') for part in prev['parts'])
             prev['context_inferred'] = any(part.get('context_inferred') for part in prev['parts'])
             prev['voice_recovered'] = any(part['source']=='voice' for part in prev['parts'])
             totals={}
@@ -72,7 +73,7 @@ def group_turns(rows):
     return result
 
 
-def recover(root, wav, words, anchors, events, offset, speech_intervals=None):
+def recover(root, wav, words, anchors, events, offset, speech_intervals=None, separate_microphone=False,self_name=None,confirmed_two_person=False,audio_source=None):
     from .speaker_audit import clean_audit
     words=clean_audit(words)
     python = root/'.speaker-env/bin/python'
@@ -82,7 +83,9 @@ def recover(root, wav, words, anchors, events, offset, speech_intervals=None):
     from .session_diarization import speech_windows
     if not speech_windows(words) and not any(row['source'] in ('missing','transition','overlap') for row in words):
         return words, None
-    payload = dict(mode='session',wav=str(wav), words=words, anchors=[],speech_intervals=speech_intervals,
+    from .channel_attribution import two_person_context
+    channel=two_person_context(events,separate_microphone,self_name,confirmed_two_person) if audio_source=='remote' else None
+    payload = dict(single_remote=channel[0] if channel else None,mode='session',wav=str(wav), words=words, anchors=[],speech_intervals=speech_intervals,
                    events=[{'t': e['t'], 'speakers': e['speakers']} for e in events], offset=offset)
     try:
         command = [str(python), '-I', str(root/'localcall/speaker.py')]
@@ -299,7 +302,7 @@ def main():
         if task.get('mode')=='session':
             spec=importlib.util.spec_from_file_location('session_diarization',root/'localcall/session_diarization.py')
             module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-            result,stats=module.diarize(task['words'],task['events'],embedding,task.get('embedding_cache'),task.get('speech_intervals'),(offset,offset+duration))
+            result,stats=module.diarize(task['words'],task['events'],embedding,task.get('embedding_cache'),task.get('speech_intervals'),(offset,offset+duration),task.get('single_remote'))
             print('session_diarization_metrics '+json.dumps(stats),file=sys.stderr)
             return result
         # Audit original labels before recovery: never train on or audit our own guesses.

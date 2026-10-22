@@ -62,6 +62,14 @@ class ReliableAPITests(unittest.TestCase):
         event={'t':0,'speakers':['A'],'participants':['x'*100]*100}
         self.request(base+'/events','POST',[event])
         self.assertEqual(len(json.loads(self.request(base)[1])['latest_event']['participants']),100)
+    def test_local_identity_must_be_a_non_speaking_roster_member(self):
+        sid=self.create();base='/api/sessions/'+sid
+        for value,expected in [('Self','Self'),('Other',None),('Remote',None)]:
+            event=dict(t=1,speakers=['Remote'],participants=['Self','Remote'],self_name=value)
+            self.assertEqual(self.request(base+'/events','POST',[event])[0],200)
+            saved=events_from(Path(self.tmp.name)/sid/'events.jsonl')[-1]
+            self.assertEqual(saved.get('self_name'),expected)
+
     def test_create_idempotency(self):
         headers={'X-Request-Id':'c'*32}
         one=self.request('/api/sessions','POST',{'language':'it'},headers=headers)

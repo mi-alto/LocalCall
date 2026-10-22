@@ -28,11 +28,11 @@
   function snapshot(doc = document, host = location.hostname) {
     const meet = host === 'meet.google.com';
     const tiles = [...doc.querySelectorAll(meet ? '[data-participant-id], [data-requested-participant-id]' : '[data-cid="calling-participant-stream"], [data-tid="myself-video"], [data-tid="participant-tile"], [data-tid="video-tile"], [data-participant-id]')];
-    const participants = new Set(), speakers = new Set(), contacts = new Map();
+    const participants = new Set(), speakers = new Set(), contacts = new Map(), selves = new Set();
     for (const tile of tiles) {
       if (!visible(tile)) continue;
       const label = tile.querySelector(meet ? '[data-self-name], [data-participant-name], .zWGUib, .notranslate' : '[data-tid="participant-info-nametag"] [data-person-mri], [data-tid="participant-name"], [data-tid="display-name"], [data-participant-name]');
-      const name = clean(tile.getAttribute('data-participant-name') || label?.getAttribute('data-self-name') || label?.getAttribute('data-participant-name') || label?.textContent);
+      const name = clean(tile.getAttribute('data-participant-name') || label?.getAttribute('data-participant-name') || label?.textContent || label?.getAttribute('data-self-name'));
       if (!name) continue;
       participants.add(name);
       for(const email of tileEmails(tile,label,meet))contacts.set(name+'\0'+email.toLowerCase(),{name,email});
@@ -46,10 +46,11 @@
         el.matches('[data-is-speaking="true"], [data-speaking="true"], [data-tid="speaking-indicator"]') ||
         /^(speaking|sta parlando|sta intervenendo)$| (is speaking|sta parlando)$/i.test(clean(el.getAttribute('aria-label')))
       ));
-      const self=tile.matches('[data-tid="myself-video"], [data-is-self="true"], [data-self="true"]')||!!tile.querySelector('[data-self-name]')||/^(you|tu)$|\((you|tu)\)$/i.test(name);
+      const self=tile.matches('[data-tid="myself-video"], [data-is-self="true"], [data-self="true"]')||(!!label?.hasAttribute('data-self-name')&&name===clean(label.getAttribute('data-self-name')))||/^(you|tu)$|\((you|tu)\)$/i.test(name);
+      if (self) selves.add(name);
       if (active&&!self) speakers.add(name);
     }
-    return {participants:[...participants], speakers:[...speakers], ...(contacts.size?{contacts:[...contacts.values()]}:{})};
+    return {participants:[...participants], speakers:[...speakers], ...(selves.size===1?{self_name:[...selves][0]}:{}), ...(contacts.size?{contacts:[...contacts.values()]}:{})};
   }
 function meetingTitle(raw) {
   let title=(raw||'').replace(/\s+/g,' ').trim();

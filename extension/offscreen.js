@@ -1,6 +1,7 @@
 const BASE='http://127.0.0.1:8765';
 let state={status:'idle'}, config, session, epoch, audioEpoch=0, recorders=[], streams=[], context;
 let queue=Promise.resolve(), eventQueue=Promise.resolve(), pendingBytes=0, eventBuffer=[], eventTimer, fault=null;
+let eventGaps=0;
 let eventBusy=false, lastObservation=0, micSource, micDestination, micLive=false, reconnecting=false, micGate, lastMicObservedAt=0;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const now=()=>performance.timeOrigin+performance.now();
@@ -29,7 +30,7 @@ function flushEvents() {
   eventBusy=true;
   // Metadata failure never cancels audio or blocks its upload queue.
   eventQueue=api(`/api/sessions/${session.id}/events`,batch,{},1)
-    .catch(()=>warn('Alcuni nomi non sono stati salvati. L’audio continua.'))
+    .catch(()=>{eventGaps+=batch.length;warn('Alcuni nomi non sono stati salvati. L’audio continua.');})
     .finally(()=>{eventBusy=false;});
   return eventQueue;
 }
@@ -74,7 +75,7 @@ navigator.mediaDevices.addEventListener('devicechange',()=>{
 async function start(m) {
   if(['recording','starting','stopping'].includes(state.status))throw Error('Registrazione già attiva');
   state={status:'starting',warnings:[]};config=m.config;session=null;fault=null;
-  queue=Promise.resolve();eventQueue=Promise.resolve();eventBusy=false;pendingBytes=0;eventBuffer=[];recorders=[];streams=[];micLive=false;lastObservation=0;lastMicObservedAt=0;
+  queue=Promise.resolve();eventQueue=Promise.resolve();eventBusy=false;eventGaps=0;pendingBytes=0;eventBuffer=[];recorders=[];streams=[];micLive=false;lastObservation=0;lastMicObservedAt=0;
   notify();
   try{
     const remote=await navigator.mediaDevices.getUserMedia({audio:{mandatory:{chromeMediaSource:'tab',chromeMediaSourceId:m.streamId}},video:false});
@@ -136,7 +137,7 @@ async function stop() {
   await queue;
   try{
     if(fault){await api(`/api/sessions/${session.id}/abort`,{});throw fault;}
-    await api(`/api/sessions/${session.id}/finish`,{warnings:state.warnings});
+    await api(`/api/sessions/${session.id}/finish`,{warnings:state.warnings,event_gaps:eventGaps});
     state={status:'saved',sessionId:session.id,warnings:state.warnings};
   }catch(e){state={status:'error',sessionId:session.id,error:e.message+' — I blocchi ricevuti sono conservati sul Mac.'};}
   notify();return state;
@@ -152,8 +153,8 @@ chrome.runtime.onMessage.addListener((m,sender,reply)=>{
       const delayed=typeof e.observedAt!=='number'||now()-e.observedAt>1250||now()<e.observedAt;
       if(valid){
         const speakers=delayed||e.speakers.length>30?[]:e.speakers.map(n=>String(n).slice(0,100));
-        eventBuffer.push({t:Math.max(0,context.currentTime-audioEpoch),speakers,participants:e.participants.slice(0,100),contacts:Array.isArray(e.contacts)?e.contacts.slice(0,100):[]});
-        if(eventBuffer.length>100)eventBuffer.splice(0,eventBuffer.length-100);
+        eventBuffer.push({t:Math.max(0,context.currentTime-audioEpoch),speakers,...(!delayed&&typeof e.self_name==='string'&&e.participants.includes(e.self_name)&&!speakers.includes(e.self_name)?{self_name:e.self_name.slice(0,100)}:{}),participants:e.participants.slice(0,100),contacts:Array.isArray(e.contacts)?e.contacts.slice(0,100):[]});
+        if(eventBuffer.length>100){eventGaps+=eventBuffer.length-100;eventBuffer.splice(0,eventBuffer.length-100);warn('Alcuni nomi non sono stati salvati: troppe osservazioni in attesa.');}
         state.participants=e.participants;state.speakers=speakers;state.observerStale=delayed;lastObservation=now();
       }
     }

@@ -10,7 +10,7 @@ import math
 DERIVED = {'speaker_check','speaker_proposal','context_inferred','voice_recovered',
            'voice_similarity','voice_model','acoustic_coverage','speaker_clusters',
            'name_support','diarization_method','original_attribution',
-           'context_method','context_bounds','boundary_refinement'}
+           'context_method','context_bounds','boundary_refinement','short_refinement','channel_evidence','channel_inferred','attribution_method'}
 
 
 def protected(row):
@@ -147,7 +147,7 @@ def assign_words(words,windows,assigned,mapping,evidence):
     return result
 
 
-def diarize(words,events,embedding,cache_path=None,speech_intervals=None,audio_range=None):
+def diarize(words,events,embedding,cache_path=None,speech_intervals=None,audio_range=None,single_remote=None):
     windows=[];vectors=[]
     regions=[r for r in words if not protected(r)] if speech_intervals is None else [dict(start=a,end=b) for a,b in speech_intervals]
     for a,b in speech_windows(regions):
@@ -165,9 +165,10 @@ def diarize(words,events,embedding,cache_path=None,speech_intervals=None,audio_r
     mapping,evidence=name_clusters(windows,assigned,events)
     decoded,names,support=decode_voices(windows,vectors,centroids,mapping,evidence)
     rows=assign_words(words,windows,decoded,names,support)
+    rows,short_queries=refine_short_single_remote(rows,centroids,mapping,evidence,embedding,audio_range,single_remote)
     rows,refinement_queries=refine_boundaries(words,rows,centroids,mapping,evidence,embedding,audio_range)
     return rows,{'windows':len(windows),'clusters':len(centroids),'named_clusters':len(mapping),
-                 'named_words':sum(r['source']=='voice' for r in rows),'total_words':len(rows),'refinement_queries':refinement_queries,
+                 'named_words':sum(r['source']=='voice' for r in rows),'total_words':len(rows),'refinement_queries':refinement_queries,'short_queries':short_queries,
                  'warning': 'No reliable browser-name matches' if windows and not mapping else None}
 
 
@@ -305,4 +306,37 @@ def refine_boundaries(words,rows,centroids,mapping,evidence,embedding,audio_rang
                 acoustic_coverage=round(min(1,coverage),4),speaker_clusters=clusters,
                 name_support=min(evidence[c]['support'] for c in clusters),
                 boundary_refinement={'method':'multiscale-change-point-v1','cut':cut,'uncertain_interval':[low,high]})
+    return result,queries
+
+
+def refine_short_single_remote(rows,centroids,mapping,evidence,embedding,audio_range,name,max_queries=192):
+    """Three-scale acoustic agreement for short gaps in verified two-person calls."""
+    import numpy as np
+    result=[dict(r) for r in rows];queries=0
+    if not name or set(mapping.values())!={name} or audio_range is None:return result,queries
+    ids=[c for c,n in mapping.items() if n==name]
+    refs=np.asarray([centroids[c] for c in ids]);other=np.asarray([v for c,v in centroids.items() if c not in mapping]);runs=[]
+    for i,r in enumerate(rows):
+        if r['source']!='acoustic_unknown' or protected(r):continue
+        if runs and runs[-1][-1]==i-1 and r['start']-rows[i-1]['end']<=.3:runs[-1].append(i)
+        else:runs.append([i])
+    for indices in runs:
+        a,b=rows[indices[0]]['start'],rows[indices[-1]]['end'];mid=(a+b)/2
+        if not 1.5<=b-a<3 or queries+3>max_queries or a<audio_range[0] or b>audio_range[1]:continue
+        scores=[];seen=set()
+        for length in (max(1.5,b-a),max(3,b-a),max(4.5,b-a)):
+            start,end=round(max(audio_range[0],mid-length/2),4),round(min(audio_range[1],mid+length/2),4)
+            # Duplicate windows do not count as distinct scales. The first window is gap-only.
+            if (start,end) in seen or end-start<1.5:break
+            seen.add((start,end));v=embedding(start,end);queries+=1
+            if v is None:break
+            score=float((refs@v).max());rival=float((other@v).max()) if len(other) else 0
+            if score<.55 or score<rival-.05:break
+            scores.append(score)
+        if len(scores)!=3:continue
+        for i in indices:
+            result[i].update(speaker=name,source='voice',confidence=0,voice_similarity=round(min(scores),4),
+                voice_model='speechbrain/ecapa-voxceleb',voice_recovered=True,acoustic_coverage=1,
+                speaker_clusters=ids,name_support=min(evidence[c]['support'] for c in ids),
+                short_refinement={'method':'three-scale-single-remote-v1','start':a,'end':b})
     return result,queries
