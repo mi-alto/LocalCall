@@ -63,7 +63,7 @@ def constrain_to_speech(segments, intervals):
         result.append({**segment,'offsets':{'from':left,'to':right},'timing_adjusted':adjusted})
     return result
 
-def fuse(segments, events, offset=0, self_name=None):
+def fuse(segments, events, offset=0, self_name=None, merge=True):
     result = []
     events = sorted(events, key=lambda e: e['t'])
     times = [e['t'] for e in events]
@@ -82,7 +82,7 @@ def fuse(segments, events, offset=0, self_name=None):
             confidence=min(confidence,.75)
         row = dict(start=round(start, 3), end=round(end, 3), speaker=name, text=text,
                    source=source, confidence=confidence, timing_adjusted=seg.get('timing_adjusted',False))
-        if result and result[-1]['speaker'] == name and result[-1]['source'] == source and start-result[-1]['end'] < .8 and end-result[-1]['start'] < 20:
+        if merge and result and result[-1]['speaker'] == name and result[-1]['source'] == source and start-result[-1]['end'] < .8 and end-result[-1]['start'] < 20:
             result[-1]['text'] += text
             result[-1]['end'] = row['end']
             result[-1]['timing_adjusted'] |= row['timing_adjusted']
@@ -101,6 +101,27 @@ def timestamp(seconds, comma=False):
     return f'{h:02}:{m:02}:{s:02}{"," if comma else "."}{ms:03}'
 
 def export(rows, kind):
+    def display_name(row):
+        return row['speaker'] + (' (continuità stimata)' if row.get('context_inferred') else '')
     if kind == 'txt':
-        return '\n\n'.join(f'[{timestamp(r["start"])}] {r["speaker"]}: {r["text"]}' for r in rows)
-    return '\n\n'.join(f'{i+1}\n{timestamp(r["start"], True)} --> {timestamp(r["end"], True)}\n{r["speaker"]}: {r["text"]}' for i, r in enumerate(rows)) + '\n'
+        return '\n\n'.join(f'[{timestamp(r["start"])}] {display_name(r)}: {r["text"]}' for r in rows)
+    # Display paragraphs may last a minute; SRT keeps the detailed short cues.
+    def leaves(items):
+        for item in items:
+            if item.get('parts'):
+                yield from leaves(item['parts'])
+            else:
+                yield dict(item)
+    cues=[]
+    for row in leaves(rows):
+        if (cues and cues[-1]['speaker']==row['speaker']
+                and cues[-1].get('track')==row.get('track')
+                and 0 <= row['start']-cues[-1]['end'] < .8
+                and row['end']-cues[-1]['start'] <= 20):
+            cues[-1]['text'] += ' '+row['text']
+            cues[-1]['end'] = row['end']
+            cues[-1]['context_inferred'] = bool(cues[-1].get('context_inferred') or row.get('context_inferred'))
+        else:
+            cues.append(row)
+    rows=cues
+    return '\n\n'.join(f'{i+1}\n{timestamp(r["start"], True)} --> {timestamp(r["end"], True)}\n{display_name(r)}: {r["text"]}' for i, r in enumerate(rows)) + '\n'

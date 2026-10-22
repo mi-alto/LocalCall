@@ -90,3 +90,17 @@ Il riconoscimento conserva più audio attorno alle parole e tollera pause più l
 ## Microfono e muto — 0.3.8
 
 Nelle call del browser la tua traccia salva silenzio quando sei in muto, lo stato non è leggibile o gli aggiornamenti scadono (massimo 1,25 secondi). L’audio degli altri prosegue. I cambiamenti dei controlli vengono rilevati anche tra i controlli periodici di 500 ms; rimane un piccolo ritardo di rilevamento e comunicazione. Il dispositivo può restare aperto, ma il segnale viene azzerato prima del salvataggio. Sono supportate le etichette italiane e inglesi; in caso di dubbio la tua voce resta esclusa. Le note vocali registrate direttamente dall’app non seguono Teams/Meet. Le registrazioni precedenti non vengono modificate.
+
+### Recupero locale dei nomi
+
+Esegui `python3 scripts/setup_speaker.py` una volta (richiede `uv` e Apple Silicon su macOS). ECAPA viene eseguito dopo Whisper, in un processo separato a due thread. Le dipendenze sono fissate con hash. Su macOS il sistema operativo blocca la rete del worker; il processo termina anche se scompare il backend.
+
+L’attribuzione ora parte dall’audio lungo tutti gli intervalli di parlato rilevati dal VAD nella traccia remota. Finestre ECAPA di tre secondi, distanziate di 1,5 secondi, vengono raggruppate per somiglianza vocale. Il clustering usa al massimo 1.600 campioni per limitare la memoria. Un gruppo riceve un nome soltanto dopo almeno tre osservazioni del browser separate e non ambigue, con supporto coerente.
+
+Un algoritmo Viterbi verifica la continuità temporale confrontando anche i gruppi vocali senza nome. Può correggere nomi DOM rimasti attivi dopo la fine del turno oppure lasciare il parlante non identificato. Il contenuto del testo non decide il nome. La traccia del microfono e le correzioni manuali esplicite sono protette. Sovrapposizioni reali, risposte brevissime e transizioni incerte possono restare anonime; i punteggi di somiglianza non sono probabilità calibrate.
+
+Gli interventi contigui sono ricomposti per la lettura. L’export JSON conserva attribuzioni originali e tempi delle parole; SRT mantiene segmenti brevi. In caso di errore resta il risultato DOM con un avviso. Le call già salvate non sono riscritte automaticamente.
+
+Le routine precedenti restano per confronti e regressioni; il backend usa `ecapa-session-v1`. Le cache sperimentali di impronte vocali sono facoltative, locali ed escluse da Git; la registrazione normale non le crea. I log operativi riportano conteggi, non nomi o testo. Audio, impronte vocali e trascrizioni non vengono inviati a LLM o servizi di inferenza esterni.
+
+I brevi cambi di turno ancora anonimi tra voci diverse vengono ricontrollati su tre scale temporali (3/4,5/6 secondi, massimo 768 richieste aggiuntive di impronte vocali per sessione). Le parole fuori dalla fascia dei confini plausibili possono ricevere un nome; la fascia incerta resta anonima. Il controllo non usa il testo o le correzioni manuali e non modifica i nomi già risolti vocalmente.

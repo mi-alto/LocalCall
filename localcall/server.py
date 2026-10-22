@@ -19,6 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
 from .diarize import fuse, export, constrain_to_speech
+from .speaker import recover, group_turns, possible_echo
 
 ROOT = Path(__file__).resolve().parent.parent
 MODEL = ROOT / 'models/ggml-large-v3-turbo-q5_0.bin'
@@ -117,6 +118,7 @@ def process(folder):
         if not MODEL.exists() or not VAD.exists():
             raise RuntimeError('Modello assente. Esegui scripts/setup.py.')
         rows = []
+        remote_for_echo = []
         events = events_from(folder/'events.jsonl')
         warnings = list(meta.get('client_warnings',[]))
         completed = 0
@@ -138,7 +140,20 @@ def process(folder):
                 if result['transcription'] and not intervals:
                     warnings.append('Confini VAD non disponibili: verifica i tempi della traccia '+track)
                 segments=constrain_to_speech(result['transcription'],intervals)
-                rows.extend(fuse(segments, events, info['offset'], meta['self_name'] if track == 'mic' else None))
+                anchors = fuse(segments, events, info['offset'], meta['self_name'] if track == 'mic' else None)
+                track_rows = anchors
+                if track == 'remote':
+                    words = fuse(segments, events, info['offset'], merge=False)
+                    remote_for_echo.extend(words)
+                    clean_anchors = fuse([s for s in segments if not s.get('timing_adjusted')], events, info['offset'])
+                    track_rows, warning = recover(ROOT, wav, words, clean_anchors, events, info['offset'],
+                        [(a/1000+info['offset'],b/1000+info['offset']) for a,b in intervals] if intervals else None)
+                    if warning:
+                        track_rows = anchors
+                        warnings.append(warning)
+                for row in track_rows:
+                    row['track'] = track
+                rows.extend(track_rows)
                 wav.unlink(missing_ok=True)
                 completed += 1
             except (OSError, ValueError, subprocess.SubprocessError) as exc:
@@ -146,16 +161,13 @@ def process(folder):
         if not completed:
             raise RuntimeError('; '.join(warnings) or 'Nessuna traccia audio disponibile')
         # Do not claim a second local speaker when the microphone contains remote echo.
-        import re as _re
-        remote = [r for r in rows if r['source'] != 'microphone']
         for row in rows:
             if row['source'] != 'microphone':
                 continue
-            normalize = lambda text: _re.sub(r'[^\w]+', '', text.lower())
-            if any(min(row['end'],r['end']) > max(row['start'],r['start']) and
-                   normalize(row['text']) == normalize(r['text']) for r in remote):
+            if possible_echo(row, remote_for_echo):
                 row.update(speaker='Non identificato (possibile eco)', source='possible_echo', confidence=0)
         rows.sort(key=lambda r: (r['start'], r['end']))
+        rows = group_turns(rows)
         save(folder/'transcript.json', rows)
         for kind in ('txt', 'srt'):
             (folder/f'transcript.{kind}').write_text(export(rows, kind))
@@ -353,6 +365,7 @@ class Handler(BaseHTTPRequestHandler):
             meta = read(folder/'session.json')
             if method == 'GET' and not action:
                 meta['transcript'] = read(folder/'transcript.json') if (folder/'transcript.json').exists() else []
+                meta['transcript'] = [{k:v for k,v in row.items() if k not in ('parts','original_attribution')} for row in meta['transcript']]
                 meta['latest_event'] = meta.get('latest_event')
                 meta['participants'] = participant_names(folder, meta)
                 return self.respond(200, public_meta(meta))

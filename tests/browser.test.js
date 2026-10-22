@@ -246,3 +246,24 @@ test('Microphone privacy gate: audio is silent when muted, unknown or stale',asy
  assert.ok(await rms()<0.00001,'audio clock expires permission without another observation');
  }finally{await browser.close();}
 });
+
+test('Speaker audit: suggestions and uncertainty keep the original name visible',async()=>{
+ const browser=await chromium.launch(launch);
+ try{
+  const page=await browser.newPage();
+  const session={id:'audit',title:'Audit test',created:1792479600,status:'done',participants:['Anna','Luca'],segments:2};
+  await page.route(base+'/api/sessions',route=>route.fulfill({json:[session]}));
+  await page.route(base+'/api/sessions/audit',route=>route.fulfill({json:{...session,transcript:[
+   {start:0,end:3,speaker:'Anna',source:'dom',text:'Testo invariato',speaker_proposal:{speaker:'Luca',status:'needs_review'}},
+   {start:4,end:7,speaker:'Anna',source:'dom',text:'Altro testo',speaker_check:{status:'uncertain'}},
+   {start:8,end:12,speaker:'Anna',source:'dom',text:'Frase ricomposta',context_inferred:true}
+  ]}}));
+  await page.goto(base+'/#'+token);
+  await page.waitForFunction(()=>document.querySelectorAll('.utterance').length===3);
+  const names=await page.locator('.utterance strong').allTextContents();
+  assert.match(names[0],/Anna.*Luca.*da verificare/);
+  assert.match(names[1],/Anna.*voce non confermata/);
+  assert.match(names[2],/Anna.*continuità stimata/);
+  assert.equal(await page.locator('.utterance p').first().textContent(),'Testo invariato');
+ }finally{await browser.close();}
+});
