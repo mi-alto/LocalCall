@@ -117,3 +117,13 @@ class ParticipantNamesTests(unittest.TestCase):
             self.assertEqual(participant_names(folder,{'tracks':{'mic':{}},'self_name':'Michele'}),['Anna','Luca','Michele'])
             (folder/'events.jsonl').write_text(json.dumps({'t':1,'participants':['Sara'],'speakers':[]})+'\n')
             self.assertIn('Sara',participant_names(folder,{}))
+
+class AttributionWarningTests(unittest.TestCase):
+    def test_missing_names_are_visible_without_replacing_transcript(self):
+        from localcall.server import attribution_warning
+        rows=[{'source':'acoustic_unknown','speaker':'Non identificato'}]
+        self.assertIn('Nessun parlante attivo',attribution_warning(rows,[{'speakers':[]}]))
+        self.assertIn('Nessuna voce associata',attribution_warning(rows,[{'speakers':['A']}]))
+        self.assertIsNone(attribution_warning([],[]))
+        self.assertIsNone(attribution_warning([{'source':'voice'}],[]))
+        self.assertEqual(rows,[{'source':'acoustic_unknown','speaker':'Non identificato'}])

@@ -110,6 +110,13 @@ def public_meta(meta):
     return {**meta, 'tracks': {name:{k:v for k,v in info.items() if k not in ('hashes','last_hash')}
                               for name,info in meta.get('tracks',{}).items()}}
 
+def attribution_warning(rows,events):
+    if not rows or any(r.get('source') not in ('acoustic_unknown','missing','transition','overlap') for r in rows):return None
+    if not any(e.get('speakers') for e in events):
+        return 'Nessun parlante attivo rilevato dal browser durante la call: i nomi dei partecipanti non bastano per attribuire le voci. Verifica l’estensione.'
+    return 'Nessuna voce associata con affidabilità ai nomi del browser: la trascrizione contiene parlanti non identificati.'
+
+
 def process(folder):
     with LOCK:
         meta = read(folder/'session.json')
@@ -187,6 +194,8 @@ def process(folder):
                 meta['tracks']['remote']['offset'],meta['tracks']['mic']['offset'],remote_intervals,mic_intervals,meta)
             rows=[r for r in rows if r.get('track')!='remote']+recovered
             if warning:warnings.append(warning)
+        diagnostic=attribution_warning([r for r in rows if r.get('track')=='remote'],events)
+        if diagnostic and diagnostic not in warnings:warnings.append(diagnostic)
         rows.sort(key=lambda r: (r['start'], r['end']))
         rows = group_turns(rows)
         save(folder/'transcript.json', rows)

@@ -31,7 +31,12 @@
     const participants = new Set(), speakers = new Set(), contacts = new Map(), selves = new Set();
     for (const tile of tiles) {
       if (!visible(tile)) continue;
-      const label = tile.querySelector(meet ? '[data-self-name], [data-participant-name], .zWGUib, .notranslate' : '[data-tid="participant-info-nametag"] [data-person-mri], [data-tid="participant-name"], [data-tid="display-name"], [data-participant-name]');
+      // Selector lists follow DOM order, not selector priority: an icon can precede the name.
+      const isName=el=>!el.matches('.google-symbols, .material-icons, .material-symbols-outlined, [data-icon-name]')&&
+        !/^(keep|keep_off|keep_outline|frame_person|sticker)$/.test(clean(el.textContent));
+      const label = meet ? ['[data-participant-name]', '.zWGUib', '[data-self-name]', '.notranslate']
+        .map(selector=>[...tile.querySelectorAll(selector)].find(isName)).find(Boolean) :
+        tile.querySelector('[data-tid="participant-info-nametag"] [data-person-mri], [data-tid="participant-name"], [data-tid="display-name"], [data-participant-name]');
       const name = clean(tile.getAttribute('data-participant-name') || label?.getAttribute('data-participant-name') || label?.textContent || label?.getAttribute('data-self-name'));
       if (!name) continue;
       participants.add(name);

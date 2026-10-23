@@ -47,6 +47,9 @@ test('Meet/Teams adapters: visible names, explicit speech, inactive widgets, mis
  await page.setContent('<div data-participant-id="self"><span data-self-name="You">You</span></div><div data-participant-id="remote" data-is-speaking="true"><span data-self-name="You">Anna</span></div>');
  s=await page.evaluate(()=>LocalCallAdapter.snapshot(document,'meet.google.com'));
  assert.deepEqual(s.participants,['You','Anna']);assert.deepEqual(s.speakers,['Anna']);assert.equal(s.self_name,'You');
+ await page.setContent('<div data-participant-id="remote" data-is-speaking="true"><span class="notranslate google-symbols">keep_outline</span><span class="zWGUib">Anna</span></div><div data-participant-id="icon"><span class="notranslate">frame_person</span></div>');
+ s=await page.evaluate(()=>LocalCallAdapter.snapshot(document,'meet.google.com'));
+ assert.deepEqual(s.participants,['Anna']);assert.deepEqual(s.speakers,['Anna']);
  await page.setContent('<div data-tid="participant-tile" data-is-speaking="true"><span data-tid="participant-name">Michele</span></div>');
  s=await page.evaluate(()=>LocalCallAdapter.snapshot(document,'teams.microsoft.com'));
  assert.deepEqual(s.speakers,['Michele']);
