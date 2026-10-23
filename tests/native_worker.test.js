@@ -52,3 +52,14 @@ test('only the recorded tab closes capture or stops it on external navigation',a
  for(const fn of callbacks.updated)await fn(7,{url:'https://example.org/'},{});
  assert.equal(stops,2);
 });
+
+test('explicit return to Teams prejoin stops only after an observed active call',async()=>{
+ const w=worker();let data={},stops=0;
+ w.context.chrome.storage.session={get:async()=>({...data}),set:async x=>Object.assign(data,x),remove:async keys=>keys.forEach(k=>delete data[k])};
+ w.context.chrome.offscreen={hasDocument:async()=>true};w.context.chrome.runtime.sendMessage=async()=>{stops++;};w.context.chrome.alarms.clear=async()=>{};
+ const check=(present,time,phase)=>vm.runInContext(`checkMeeting(${present},${time},'${phase}')`,w.context);
+ await check(false,1000,'prejoin');await check(false,10000,'prejoin');assert.equal(stops,0);
+ await check(true,11000,'active');await check(false,12000,'prejoin');await check(false,13000,'prejoin');assert.equal(stops,0);
+ await check(true,13500,'active');await check(false,14000,'prejoin');await check(false,15000,'unknown');await check(false,16000,'prejoin');assert.equal(stops,0);
+ await check(false,18000,'prejoin');assert.equal(stops,1);
+});

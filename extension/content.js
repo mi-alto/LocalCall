@@ -15,7 +15,7 @@
       halt();
       tick=()=>{
         const microphoneMuted=Date.now()<holdUntil?null:LocalCallAdapter.microphoneMuted();lastMute=microphoneMuted;
-        chrome.runtime.sendMessage({target:'worker',type:'observation',event:{observedAt:performance.timeOrigin+performance.now(),microphoneMuted,inMeeting:LocalCallAdapter.inMeeting(),...LocalCallAdapter.snapshot()}})
+        chrome.runtime.sendMessage({target:'worker',type:'observation',event:{observedAt:performance.timeOrigin+performance.now(),microphoneMuted,meetingPhase:LocalCallAdapter.meetingPhase(),inMeeting:LocalCallAdapter.inMeeting(),...LocalCallAdapter.snapshot()}})
           .then(r=>{if(r?.active===false)halt();}).catch(()=>{});
       };
       observer=new MutationObserver(()=>{if(LocalCallAdapter.microphoneMuted()!==lastMute)tick?.();});

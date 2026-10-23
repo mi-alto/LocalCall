@@ -1,11 +1,21 @@
 /* Observable DOM only: no internal tokens, call APIs, or outbound requests.
    These adapters are heuristics, not a stable provider API. */
 (() => {
-  function visible(el) {
-    if(el.closest('[aria-hidden="true"]'))return false;
+  function visible(el, accessibilityHidden=false) {
+    if(!accessibilityHidden&&el.closest('[aria-hidden="true"]'))return false;
     if(el.checkVisibility&&!el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return false;
     const box=el.getBoundingClientRect();
     return box.width>0&&box.height>0&&getComputedStyle(el).visibility!=='hidden';
+  }
+  // Teams audio-stage is aria-hidden for accessibility, not visually hidden.
+  // Its outline may be painted by CSS without an independent bounding box.
+  function renderedOutline(el,tile) {
+    for(let node=el;node;node=node.parentElement){
+      const css=getComputedStyle(node);
+      if(node.hidden||css.display==='none'||css.visibility==='hidden'||css.visibility==='collapse'||Number(css.opacity)===0)return false;
+      if(node===tile)break;
+    }
+    return visible(tile,true);
   }
   function clean(s) { return (s||'').replace(/\s+/g,' ').trim().slice(0,100); }
   function emailAddress(value){
@@ -30,7 +40,7 @@
     const tiles = [...doc.querySelectorAll(meet ? '[data-participant-id], [data-requested-participant-id]' : '[data-cid="calling-participant-stream"], [data-tid="myself-video"], [data-tid="participant-tile"], [data-tid="video-tile"], [data-participant-id]')];
     const participants = new Set(), speakers = new Set(), contacts = new Map(), selves = new Set();
     for (const tile of tiles) {
-      if (!visible(tile)) continue;
+      if (!visible(tile,!meet)) continue;
       // Selector lists follow DOM order, not selector priority: an icon can precede the name.
       const isName=el=>!el.matches('.google-symbols, .material-icons, .material-symbols-outlined, [data-icon-name]')&&
         !/^(keep|keep_off|keep_outline|frame_person|sticker)$/.test(clean(el.textContent));
@@ -45,9 +55,9 @@
       // from a merely present audio-level widget, focus, selection, or tile order.
       const explicit = tile.matches('[data-is-speaking="true"], [data-speaking="true"]');
       const indicators = [...tile.querySelectorAll('[data-is-speaking="true"], [data-speaking="true"], [data-tid="speaking-indicator"], [aria-label]')];
-      const knownIndicator = meet ? '.IisKdb, .wnPUne' : '.vdi-frame-occlusion[data-is-speaking="true"]';
-      const visual = [tile, ...tile.querySelectorAll(knownIndicator)].some(el => el.matches(knownIndicator) && visible(el));
-      const active = explicit || visual || indicators.some(el => visible(el) && (
+      const knownIndicator = meet ? '.IisKdb, .wnPUne' : '[data-tid="voice-level-stream-outline"][data-is-speaking="true"]';
+      const visual = [tile, ...tile.querySelectorAll(knownIndicator)].some(el => el.matches(knownIndicator) && (meet?visible(el):renderedOutline(el,tile)));
+      const active = explicit || visual || indicators.some(el => visible(el,!meet) && (
         el.matches('[data-is-speaking="true"], [data-speaking="true"], [data-tid="speaking-indicator"]') ||
         /^(speaking|sta parlando|sta intervenendo)$| (is speaking|sta parlando)$/i.test(clean(el.getAttribute('aria-label')))
       ));
@@ -71,7 +81,14 @@ function meetingTitle(raw) {
 }
   function inMeeting() {
     // Presence, not CSS visibility: toolbars can hide while presenting.
+    if([...document.querySelectorAll('#prejoin-join-button, [data-tid="prejoin-join-button"]')].some(el=>visible(el,true)))return false;
+    if([...document.querySelectorAll('[data-tid="calling-stage-container"], [data-tid="modern-stage-wrapper"], [data-tid="audio-stage"]')].some(el=>visible(el,true)))return true;
     return !!document.querySelector('#hangup-button, [data-tid="call-hangup"], [data-tid="hangup-button"], button[aria-label="Leave call"], button[aria-label="Leave meeting"], button[aria-label="Abbandona la chiamata"], button[aria-label="Abbandona la riunione"], button[aria-label="Esci dalla chiamata"]');
+  }
+  function meetingPhase() {
+    if(inMeeting())return 'active';
+    if([...document.querySelectorAll('#prejoin-join-button, [data-tid="prejoin-join-button"]')].some(el=>visible(el,true)))return 'prejoin';
+    return 'unknown';
   }
   function microphoneMuted() {
     const controls=[...document.querySelectorAll('#microphone-button, button[aria-label], [role="button"][aria-label]')];
@@ -85,5 +102,5 @@ function meetingTitle(raw) {
     }
     return states.length&&states.every(s=>s===states[0])?states[0]:null;
   }
-  globalThis.LocalCallAdapter = {microphoneMuted, inMeeting, snapshot, meetingTitle:()=>meetingTitle(document.title)};
+  globalThis.LocalCallAdapter = {microphoneMuted, inMeeting, meetingPhase, snapshot, meetingTitle:()=>meetingTitle(document.title)};
 })();

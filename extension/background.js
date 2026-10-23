@@ -23,13 +23,17 @@ async function stopMeeting() {
   if(await chrome.offscreen.hasDocument())result=await chrome.runtime.sendMessage({target:'recorder',type:'stop'});
   if(result?.error)throw Error(result.error);
   await chrome.alarms.clear('meeting-lifecycle');
-  await chrome.storage.session.remove(['meetingTab','meetingSeen','meetingMissingSince']);
+  await chrome.storage.session.remove(['meetingTab','meetingSeen','meetingMissingSince','meetingExitSince']);
   return result;
 }
-async function checkMeeting(present, now=Date.now()) {
-  const state=await chrome.storage.session.get(['meetingSeen','meetingMissingSince']);
-  if(present){await chrome.storage.session.set({meetingSeen:true,meetingMissingSince:0});return;}
+async function checkMeeting(present, now=Date.now(), phase='unknown') {
+  const state=await chrome.storage.session.get(['meetingSeen','meetingMissingSince','meetingExitSince']);
+  if(present){await chrome.storage.session.set({meetingSeen:true,meetingMissingSince:0,meetingExitSince:0});return;}
   if(!state.meetingSeen)return; // A recording started in the lobby is not an ended call.
+  if(phase==='prejoin'){
+    if(!state.meetingExitSince)await chrome.storage.session.set({meetingExitSince:now});
+    else if(now-state.meetingExitSince>=2000){await stopMeeting();return;}
+  }else if(state.meetingExitSince)await chrome.storage.session.set({meetingExitSince:0});
   if(!state.meetingMissingSince)await chrome.storage.session.set({meetingMissingSince:now});
   else if(now-state.meetingMissingSince>=60000)await stopMeeting();
 }
@@ -46,7 +50,7 @@ async function handle(m, sender) {
     const {meetingTab} = await chrome.storage.session.get('meetingTab');
     if (sender.tab?.id !== meetingTab || sender.frameId !== 0) return {active:false};
     if (!(await chrome.offscreen.hasDocument())) return {active:false};
-    if(typeof m.event?.inMeeting==='boolean')await checkMeeting(m.event.inMeeting);
+    if(typeof m.event?.inMeeting==='boolean')await checkMeeting(m.event.inMeeting,Date.now(),m.event.meetingPhase);
     return chrome.runtime.sendMessage({...m, target:'recorder'});
   }
   if (sender.tab && !sender.url?.startsWith(chrome.runtime.getURL(''))) throw Error('Richiesta non autorizzata');
@@ -82,7 +86,7 @@ async function handle(m, sender) {
       const titleResults=await chrome.scripting.executeScript({target:{tabId:tab.id},func:()=>globalThis.LocalCallAdapter.meetingTitle()});
       const meetingTitle=titleResults[0]?.result||tab.title;
       const streamId = await chrome.tabCapture.getMediaStreamId({targetTabId:tab.id});
-      await chrome.storage.session.set({meetingTab:tab.id,meetingSeen:false,meetingMissingSince:0});
+      await chrome.storage.session.set({meetingTab:tab.id,meetingSeen:false,meetingMissingSince:0,meetingExitSince:0});
       const result = await chrome.runtime.sendMessage({target:'recorder',type:'start',streamId,config,title:meetingTitle});
       if (result.error) throw Error(result.error);
       try { await chrome.tabs.sendMessage(tab.id,{type:'observe',epoch:result.epoch}); }
@@ -121,8 +125,8 @@ chrome.alarms.onAlarm.addListener(async alarm=>{
     if(meetingTab===undefined)return;
     const tab=await chrome.tabs.get(meetingTab);
     if(!SUPPORTED.test(tab.url||'')){await stopMeeting();return;}
-    const result=await chrome.scripting.executeScript({target:{tabId:meetingTab},func:()=>globalThis.LocalCallAdapter?.inMeeting()});
-    if(typeof result[0]?.result==='boolean')await checkMeeting(result[0].result);
+    const result=await chrome.scripting.executeScript({target:{tabId:meetingTab},func:()=>({present:globalThis.LocalCallAdapter?.inMeeting(),phase:globalThis.LocalCallAdapter?.meetingPhase?.()})});
+    if(typeof result[0]?.result?.present==='boolean')await checkMeeting(result[0].result.present,Date.now(),result[0].result.phase);
   } catch { /* A temporarily unavailable page is not evidence that the call ended. */ }
 });
 chrome.tabs.onRemoved.addListener(async tabId=>{

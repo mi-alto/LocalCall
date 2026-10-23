@@ -77,6 +77,29 @@ test('Meet/Teams adapters: visible names, explicit speech, inactive widgets, mis
  }finally{await browser.close();}
 });
 
+test('Teams audio stage: accessible-hidden is visible, CSS outline switches, return to prejoin',async()=>{
+ const browser=await chromium.launch(launch);try{
+ const page=await browser.newPage();
+ await page.setContent(`<div data-tid="calling-stage-container"><div data-tid="audio-stage" aria-hidden="true"><div data-cid="calling-participant-stream"><span data-tid="participant-name">Remote</span><div data-tid="voice-level-stream-outline" data-is-speaking="true" style="width:0;height:0"></div></div></div></div>`);
+ await page.addScriptTag({path:'extension/adapters.js'});
+ const snapshot=()=>page.evaluate(()=>LocalCallAdapter.snapshot(document,'teams.microsoft.com'));
+ assert.deepEqual((await snapshot()).speakers,['Remote']);
+ assert.equal(await page.evaluate(()=>LocalCallAdapter.meetingPhase()),'active');
+ const outline=page.locator('[data-tid="voice-level-stream-outline"]');
+ await outline.evaluate(e=>e.dataset.isSpeaking='false');assert.deepEqual((await snapshot()).speakers,[]);
+ await outline.evaluate(e=>e.dataset.isSpeaking='true');
+ for(const style of ['display:none','visibility:hidden','opacity:0']){
+  await outline.evaluate((e,style)=>e.style.cssText=style,style);assert.deepEqual((await snapshot()).speakers,[]);
+ }
+ await outline.evaluate(e=>e.style.cssText='width:0;height:0');
+ await page.locator('[data-tid="audio-stage"]').evaluate(e=>e.style.display='none');
+ assert.deepEqual((await snapshot()).participants,[]);
+ await page.setContent('<button id="prejoin-join-button">Partecipa ora</button>');
+ assert.equal(await page.evaluate(()=>LocalCallAdapter.inMeeting()),false);
+ assert.equal(await page.evaluate(()=>LocalCallAdapter.meetingPhase()),'prejoin');
+ }finally{await browser.close();}
+});
+
 test('UI: authenticate, record real WebM via fake mic, transcribe locally, export, no external requests',async()=>{
  const browser=await chromium.launch(launch);try{
  const context=await browser.newContext({permissions:['microphone']});
